@@ -24,12 +24,12 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     # Filter out ifup and ifdown events
     # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
     # :is_lower_up reports whether the interface as associated with an AP
-    def handle_event({:net_basic, _, :ifchanged, %{:ifname => ifname, :is_up => true}}, %{:ifname => ifname}=state) do
+    def handle_event({:net_basic, _, :ifchanged, %{:ifname => ifname, :is_up => true}}, %{:ifname => ifname} = state) do
       Logger.info "WiFiManager.EventHandler(#{state.ifname}) ifup"
       send state.manager, :ifup
       {:ok, state}
     end
-    def handle_event({:net_basic, _, :ifchanged, %{:ifname => ifname, :is_up => false}}, %{:ifname => ifname}=state) do
+    def handle_event({:net_basic, _, :ifchanged, %{:ifname => ifname, :is_up => false}}, %{:ifname => ifname} = state) do
       Logger.info "WiFiManager.EventHandler(#{ifname}) ifdown"
       send state.manager, :ifdown
       {:ok, state}
@@ -49,7 +49,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
 
     # DHCP events
     # :bound, :renew, :deconfig, :nak
-    def handle_event({:udhcpc, _, event, %{:ifname => ifname}=info}, %{:ifname => ifname}=state) do
+    def handle_event({:udhcpc, _, event, %{:ifname => ifname} = info}, %{:ifname => ifname} = state) do
       Logger.info "WiFiManager.EventHandler(#{state.ifname}) udhcpc #{inspect event}"
       send state.manager, {event, info}
       {:ok, state}
@@ -194,13 +194,13 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   end
 
   defp configure(state, info) do
-    :ok = NetBasic.set_config(Nerves.InterimWiFi.EventManager, state.ifname, info)
-    :ok = Resolvconf.set_config(state.resolvconf, state.ifname, info)
+    :ok = NetBasic.set_config(Nerves.InterimWiFi.NetBasic, state.ifname, info)
+    :ok = Resolvconf.set_config(Nerves.InterimWiFi.Resolvconf, state.ifname, info)
     state
   end
 
   defp deconfigure(state) do
-    :ok = Resolvconf.clear(state.resolvconf, state.ifname)
+    :ok = Resolvconf.clear(Nerves.InterimWiFi.Resolvconf, state.ifname)
     state
   end
 

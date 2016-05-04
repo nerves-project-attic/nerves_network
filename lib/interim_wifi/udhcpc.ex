@@ -57,7 +57,7 @@ defmodule Nerves.InterimWiFi.Udhcpc do
           |> add_hostname_arg(hostname)
     port = Port.open({:spawn_executable, port_path},
                      [{:args, args}, :exit_status, :stderr_to_stdout, {:line, 256}])
-    { :ok, %{ifname: ifname, port: port} }
+    {:ok, %{ifname: ifname, port: port}}
   end
 
   defp add_hostname_arg(args, "noname"), do: args
