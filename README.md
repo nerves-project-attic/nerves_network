@@ -18,3 +18,8 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
           [applications: [:nerves_interim_wifi]]
         end
 
+## Running
+
+Setup your WiFi connection by running:
+
+    Nerves.InterimWiFi.setup "wlan0", ssid: "my_accesspoint_name", key_mgmt: :"WPA-PSK", psk: "secret"
