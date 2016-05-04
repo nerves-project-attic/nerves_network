@@ -1,8 +1,11 @@
 defmodule Mix.Tasks.Compile.Udhcpc do
   @shortdoc "Compiles the port binary"
   def run(_) do
-    {result, _error_code} = System.cmd("make", ["priv/udhcpc_wrapper"], stderr_to_stdout: true)
+    {result, error_code} = System.cmd("make", ["all"], stderr_to_stdout: true)
     IO.binwrite result
+    if error_code != 0 do
+      raise Mix.Error, "Make returned an error"
+    end
     Mix.Project.build_structure
   end
 end
@@ -42,7 +45,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
     %{files: ["lib", "src/*.[ch]", "test", "mix.exs", "README.md", "LICENSE", "Makefile"],
       maintainers: ["Frank Hunleth"],
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/fhunleth/nerves_interim_wifi.ex"}}
+      links: %{"GitHub" => "https://github.com/fhunleth/nerves_interim_wifi"}}
   end
 
   defp deps do

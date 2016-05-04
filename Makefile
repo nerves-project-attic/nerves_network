@@ -9,8 +9,9 @@
 # SUDO_ASKPASS  path to ssh-askpass when modifying ownership of net_basic
 # SUDO          path to SUDO. If you don't want the privileged parts to run, set to "true"
 
-LDFLAGS += -lmnl
+LDFLAGS +=
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
+CFLAGS += -std=c99
 CC ?= $(CROSSCOMPILE)gcc
 MIX ?= mix
 
@@ -23,19 +24,15 @@ else
 SUDO ?= true
 endif
 
-all: compile
+.PHONY: all clean
 
-compile:
-	$(MIX) compile
-
-test:
-	$(MIX) test
+all: priv/udhcpc_wrapper
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 priv/udhcpc_wrapper: src/udhcpc_wrapper.o
-	mkdir -p priv
+	@mkdir -p priv
 	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
 	# setuid root net_basic so that it can configure network interfaces
 	SUDO_ASKPASS=$(SUDO_ASKPASS) $(SUDO) -- sh -c 'chown root:root $@; chmod +s $@'
@@ -44,4 +41,5 @@ clean:
 	$(MIX) clean
 	rm -f priv/udhcpc_wrapper src/*.o
 
-.PHONY: all compile test clean
+realclean:
+	rm -fr _build priv/udhcpc_wrapper src/*.o
