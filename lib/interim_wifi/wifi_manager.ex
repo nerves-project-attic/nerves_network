@@ -2,6 +2,8 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   use GenServer
   require Logger
 
+  @wpa_control_path "/var/run/wpa_supplicant"
+
   # The current state machine state is called "context" to avoid confusion between server
   # state and state machine state.
   defstruct context: :removed,
@@ -205,7 +207,17 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   end
   defp start_wpa(state) do
     state = stop_wpa(state)
-    {:ok, pid} = WpaSupplicant.start_link("/var/run/wpa_supplicant/#{state.ifname}",
+    wpa_control_pipe = @wpa_control_path <> "/#{state.ifname}"
+    if !File.exists?(wpa_control_pipe) do
+        # wpa_supplicant daemon not started, so launch it
+        {_, 0} = System.cmd "/sbin/wpa_supplicant",
+                  ["-i#{state.ifname}", "-C#{@wpa_control_path}", "-B"]
+
+        # give it time to open the pipe
+        :timer.sleep 250
+    end
+
+    {:ok, pid} = WpaSupplicant.start_link(wpa_control_pipe,
                                           Nerves.InterimWiFi.EventManager)
     wpa_supplicant_settings = Map.new(state.settings)
     :ok = WpaSupplicant.set_network(pid, wpa_supplicant_settings)
