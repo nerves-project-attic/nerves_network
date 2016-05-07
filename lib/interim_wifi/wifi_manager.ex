@@ -2,6 +2,9 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   use GenServer
   require Logger
 
+  # The following are Nerves locations of the supplicant. If not using
+  # Nerves, these may be different.
+  @wpa_supplicant_path "/usr/sbin/wpa_supplicant"
   @wpa_control_path "/var/run/wpa_supplicant"
 
   # The current state machine state is called "context" to avoid confusion between server
@@ -210,7 +213,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     wpa_control_pipe = @wpa_control_path <> "/#{state.ifname}"
     if !File.exists?(wpa_control_pipe) do
         # wpa_supplicant daemon not started, so launch it
-        {_, 0} = System.cmd "/sbin/wpa_supplicant",
+        {_, 0} = System.cmd @wpa_supplicant_path,
                   ["-i#{state.ifname}", "-C#{@wpa_control_path}", "-B"]
 
         # give it time to open the pipe
