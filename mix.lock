@@ -2,5 +2,5 @@
   "credo": {:hex, :credo, "0.3.13"},
   "earmark": {:hex, :earmark, "0.2.1"},
   "ex_doc": {:hex, :ex_doc, "0.11.5"},
-  "net_basic": {:git, "https://github.com/fhunleth/net_basic.ex.git", "45de7079ab3c8f6f37b848be26261557d43ac738", [tag: "master"]},
+  "net_basic": {:git, "https://github.com/fhunleth/net_basic.ex.git", "3c734e5f8a58e027add0d7877e4467350b283ab8", [branch: "master"]},
   "wpa_supplicant": {:hex, :wpa_supplicant, "0.2.0"}}

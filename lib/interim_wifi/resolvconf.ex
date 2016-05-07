@@ -35,11 +35,11 @@ defmodule Nerves.InterimWiFi.Resolvconf do
 
     %{domain: "example.com", nameservers: ["8.8.8.8", "8.8.4.4"]}
   """
-  def set_config(pid, ifname, options) when is_list(options) do
-    set_config(pid, ifname, :maps.from_list(options))
+  def setup(pid, ifname, options) when is_list(options) do
+    setup(pid, ifname, :maps.from_list(options))
   end
-  def set_config(pid, ifname, options) when is_map(options) do
-    GenServer.call(pid, {:set_config, ifname, options})
+  def setup(pid, ifname, options) when is_map(options) do
+    GenServer.call(pid, {:setup, ifname, options})
   end
 
   @doc """
@@ -89,7 +89,7 @@ defmodule Nerves.InterimWiFi.Resolvconf do
     write_resolvconf(state)
     {:reply, :ok, state}
   end
-  def handle_call({:set_config, ifname, ifentry}, _from, state) do
+  def handle_call({:setup, ifname, ifentry}, _from, state) do
     state = %{state | ifmap: Map.put(state.ifmap, ifname, ifentry)}
     write_resolvconf(state)
     {:reply, :ok, state}
