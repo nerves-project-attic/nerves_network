@@ -117,20 +117,40 @@ defmodule Nerves.InterimWiFi.WiFiManager do
 
   ## Context: :removed
   defp consume(:removed, :ifadded, state) do
-    :ok = NetBasic.ifup(Nerves.InterimWiFi.NetBasic, state.ifname)
+    case NetBasic.ifup(Nerves.InterimWiFi.NetBasic, state.ifname) do
+      :ok ->
+        # Check the status and send an initial event through based
+        # on whether the interface is up or down
+        # NOTE: GenEvent.notify/2 is asynchronous which is good and bad. It's
+        #       good since if it were synchronous, we'd certainly mess up our state.
+        #       It's bad since there's a race condition between when we get the status
+        #       and when the update is sent. I can't imagine us hitting the race condition
+        #       though. :)
+        {:ok, status} = NetBasic.status(Nerves.InterimWiFi.NetBasic, state.ifname)
+        GenEvent.notify(Nerves.InterimWiFi.EventManager, {:net_basic, Nerves.InterimWiFi.NetBasic, :ifchanged, status})
 
-    # Check the status and send an initial event through based
-    # on whether the interface is up or down
-    # NOTE: GenEvent.notify/2 is asynchronous which is good and bad. It's
-    #       good since if it were synchronous, we'd certainly mess up our state.
-    #       It's bad since there's a race condition between when we get the status
-    #       and when the update is sent. I can't imagine us hitting the race condition
-    #       though. :)
+        state
+          |> goto_context(:down)
+      {:error, _} ->
+        # The interface isn't quite up yet. Retry
+        Process.send_after self, :retry_ifadded, 250
+        state
+          |> goto_context(:retry_add)
+    end
+  end
+  defp consume(:removed, :retry_ifadded, state), do: state
+
+  ## Context: :retry_add
+  defp consume(:retry_add, :ifremoved, state) do
+    state
+      |> goto_context(:removed)
+  end
+  defp consume(:retry_add, :retry_ifadded, state) do
     {:ok, status} = NetBasic.status(Nerves.InterimWiFi.NetBasic, state.ifname)
     GenEvent.notify(Nerves.InterimWiFi.EventManager, {:net_basic, Nerves.InterimWiFi.NetBasic, :ifchanged, status})
 
-    state |>
-      goto_context(:down)
+    state
+      |> goto_context(:down)
   end
 
   ## Context: :down
@@ -214,7 +234,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     if !File.exists?(wpa_control_pipe) do
         # wpa_supplicant daemon not started, so launch it
         {_, 0} = System.cmd @wpa_supplicant_path,
-                  ["-i#{state.ifname}", "-C#{@wpa_control_path}", "-B"]
+                  ["-i#{state.ifname}", "-C#{@wpa_control_path}", "-B", "-Dnl80211,wext"]
 
         # give it time to open the pipe
         :timer.sleep 250
