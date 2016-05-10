@@ -60,4 +60,22 @@ defmodule Nerves.InterimWiFi do
     Logger.debug "#{__MODULE__} scan(#{ifname})"
     Nerves.InterimWiFi.IFSupervisor.scan ifname
   end
+
+  @doc """
+  Change the regulatory domain for wireless operations. This must be set to the
+  two character `alpha2` code for the country where this device is operating.
+  See http://git.kernel.org/cgit/linux/kernel/git/sforshee/wireless-regdb.git/tree/db.txt
+  for the latest database and the frequencies allowed per country.
+
+  The default is to use the world regulatory domain (00).
+
+  You may also configure the regulatory domain in your app's `config/config.exs`:
+
+      config :nerves_interim_wifi,
+        regulatory_domain: "US"
+  """
+  def set_regulatory_domain(country) do
+    Logger.warn "Regulatory domain currently can only be updated on WiFi device addition."
+    Application.put_env(:nerves_interim_wifi, :regulatory_domain, country)
+  end
 end

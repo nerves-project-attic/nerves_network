@@ -6,6 +6,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   # Nerves, these may be different.
   @wpa_supplicant_path "/usr/sbin/wpa_supplicant"
   @wpa_control_path "/var/run/wpa_supplicant"
+  @wpa_config_file "/tmp/nerves_interim_wpa.conf"
 
   # The current state machine state is called "context" to avoid confusion between server
   # state and state machine state.
@@ -233,8 +234,13 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     wpa_control_pipe = @wpa_control_path <> "/#{state.ifname}"
     if !File.exists?(wpa_control_pipe) do
         # wpa_supplicant daemon not started, so launch it
+        write_wpa_conf
         {_, 0} = System.cmd @wpa_supplicant_path,
-                  ["-i#{state.ifname}", "-C#{@wpa_control_path}", "-B", "-Dnl80211,wext"]
+                  ["-i#{state.ifname}",
+                   "-c#{@wpa_config_file}",
+                   "-C#{@wpa_control_path}",
+                   "-Dnl80211,wext",
+                   "-B"]
 
         # give it time to open the pipe
         :timer.sleep 250
@@ -272,4 +278,11 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     state
   end
 
+  defp write_wpa_conf() do
+    # Get the regulatory domain from the configuration.
+    # "00" is the world domain
+    regulatory_domain = Application.get_env(:nerves_interim_wifi, :regulatory_domain, "00")
+    contents = "country=#{regulatory_domain}"
+    File.write! @wpa_config_file, contents
+  end
 end
