@@ -31,7 +31,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger, :net_basic, :wpa_supplicant],
+    [applications: [:logger, :net_basic, :nerves_wpa_supplicant],
      mod: {Nerves.InterimWiFi, []}]
   end
 
@@ -54,7 +54,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
       {:ex_doc, "~> 0.11", only: :dev},
       {:credo, "~> 0.3", only: [:dev, :test]},
       {:net_basic, github: "fhunleth/net_basic.ex", branch: "master"},
-      {:wpa_supplicant, "~> 0.2.0"}
+      {:nerves_wpa_supplicant, github: "nerves-project/nerves_wpa_supplicant", branch: "master"}
     ]
   end
 end

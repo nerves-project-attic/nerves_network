@@ -1,6 +1,7 @@
-%{"bunt": {:hex, :bunt, "0.1.5"},
-  "credo": {:hex, :credo, "0.3.13"},
-  "earmark": {:hex, :earmark, "0.2.1"},
-  "ex_doc": {:hex, :ex_doc, "0.11.5"},
-  "net_basic": {:git, "https://github.com/fhunleth/net_basic.ex.git", "3c734e5f8a58e027add0d7877e4467350b283ab8", [branch: "master"]},
+%{"bunt": {:hex, :bunt, "0.1.6", "5d95a6882f73f3b9969fdfd1953798046664e6f77ec4e486e6fafc7caad97c6f", [:mix], []},
+  "credo": {:hex, :credo, "0.3.13", "90d2d2deb9d376bb2a63f81126a320c3920ce65acb1294982ab49a8aacc7d89f", [:mix], [{:bunt, "~> 0.1.4", [hex: :bunt, optional: false]}]},
+  "earmark": {:hex, :earmark, "0.2.1", "ba6d26ceb16106d069b289df66751734802777a3cbb6787026dd800ffeb850f3", [:mix], []},
+  "ex_doc": {:hex, :ex_doc, "0.11.5", "0dc51cb84f8312162a2313d6c71573a9afa332333d8a332bb12540861b9834db", [:mix], [{:earmark, "~> 0.1.17 or ~> 0.2", [hex: :earmark, optional: true]}]},
+  "nerves_wpa_supplicant": {:git, "https://github.com/nerves-project/nerves_wpa_supplicant.git", "36679ae89f87a91dfbc509b1df59613396c8e107", [branch: "master"]},
+  "net_basic": {:git, "https://github.com/fhunleth/net_basic.ex.git", "de575e07bc8415c4cd8a4fdee58926851543ce5a", [branch: "master"]},
   "wpa_supplicant": {:hex, :wpa_supplicant, "0.2.0"}}

@@ -61,12 +61,12 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     end
 
     # wpa_supplicant events
-    def handle_event({:wpa_supplicant, _, :"CTRL-EVENT-CONNECTED"}, state) do
+    def handle_event({:nerves_wpa_supplicant, _, :"CTRL-EVENT-CONNECTED"}, state) do
       Logger.info "WiFiManager.EventHandler(#{state.ifname}) wifi_connected"
       send state.manager, :wifi_connected
       {:ok, state}
     end
-    def handle_event({:wpa_supplicant, _, :"CTRL-EVENT-DISCONNECTED"}, state) do
+    def handle_event({:nerves_wpa_supplicant, _, :"CTRL-EVENT-DISCONNECTED"}, state) do
       Logger.info "WiFiManager.EventHandler(#{state.ifname}) wifi_disconnected"
       send state.manager, :wifi_disconnected
       {:ok, state}
@@ -223,7 +223,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
 
   defp stop_wpa(state) do
     if is_pid(state.wpa_pid) do
-      WpaSupplicant.stop(state.wpa_pid)
+      Nerves.WpaSupplicant.stop(state.wpa_pid)
       %Nerves.InterimWiFi.WiFiManager{state | wpa_pid: nil}
     else
       state
@@ -246,10 +246,10 @@ defmodule Nerves.InterimWiFi.WiFiManager do
         :timer.sleep 250
     end
 
-    {:ok, pid} = WpaSupplicant.start_link(wpa_control_pipe,
+    {:ok, pid} = Nerves.WpaSupplicant.start_link(wpa_control_pipe,
                                           Nerves.InterimWiFi.EventManager)
     wpa_supplicant_settings = Map.new(state.settings)
-    :ok = WpaSupplicant.set_network(pid, wpa_supplicant_settings)
+    :ok = Nerves.WpaSupplicant.set_network(pid, wpa_supplicant_settings)
     %Nerves.InterimWiFi.WiFiManager{state | wpa_pid: pid}
   end
 
