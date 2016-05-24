@@ -27,7 +27,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
       {:ok, %{manager: manager, ifname: ifname}}
     end
 
-    def handle_event({:net_basic, _, :ifadded, %{:ifname => ifname}}, %{:ifname => ifname} = state) do
+    def handle_event({:nerves_network_interface, _, :ifadded, %{:ifname => ifname}}, %{:ifname => ifname} = state) do
       Logger.info "WiFiManager.EventHandler(#{state.ifname}) ifadded"
       send state.manager, :ifadded
       {:ok, state}
@@ -35,12 +35,12 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     # :ifmoved occurs on systems that assign stable names to removable
     # interfaces. I.e. the interface is added under the dynamically chosen
     # name and then quickly renamed to something that is stable across boots.
-    def handle_event({:net_basic, _, :ifmoved, %{:ifname => ifname}}, %{:ifname => ifname} = state) do
+    def handle_event({:nerves_network_interface, _, :ifmoved, %{:ifname => ifname}}, %{:ifname => ifname} = state) do
       Logger.info "WiFiManager.EventHandler(#{state.ifname}) ifadded (moved)"
       send state.manager, :ifadded
       {:ok, state}
     end
-    def handle_event({:net_basic, _, :ifremoved, %{:ifname => ifname}}, %{:ifname => ifname} = state) do
+    def handle_event({:nerves_network_interface, _, :ifremoved, %{:ifname => ifname}}, %{:ifname => ifname} = state) do
       Logger.info "WiFiManager.EventHandler(#{state.ifname}) ifremoved"
       send state.manager, :ifremoved
       {:ok, state}
@@ -49,12 +49,12 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     # Filter out ifup and ifdown events
     # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
     # :is_lower_up reports whether the interface as associated with an AP
-    def handle_event({:net_basic, _, :ifchanged, %{:ifname => ifname, :is_up => true}}, %{:ifname => ifname} = state) do
+    def handle_event({:nerves_network_interface, _, :ifchanged, %{:ifname => ifname, :is_up => true}}, %{:ifname => ifname} = state) do
       Logger.info "WiFiManager.EventHandler(#{state.ifname}) ifup"
       send state.manager, :ifup
       {:ok, state}
     end
-    def handle_event({:net_basic, _, :ifchanged, %{:ifname => ifname, :is_up => false}}, %{:ifname => ifname} = state) do
+    def handle_event({:nerves_network_interface, _, :ifchanged, %{:ifname => ifname, :is_up => false}}, %{:ifname => ifname} = state) do
       Logger.info "WiFiManager.EventHandler(#{ifname}) ifdown"
       send state.manager, :ifdown
       {:ok, state}
@@ -90,14 +90,14 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     # Make sure that the interface is enabled or nothing will work.
     Logger.info "WiFiManager(#{ifname}) starting"
 
-    # Register for net_basic events
+    # Register for nerves_network_interface events
     GenEvent.add_handler(Nerves.InterimWiFi.EventManager, EventHandler, {self, ifname})
 
     state = %Nerves.InterimWiFi.WiFiManager{settings: settings, ifname: ifname}
 
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
-    current_interfaces = NetBasic.interfaces Nerves.InterimWiFi.NetBasic
+    current_interfaces = Nerves.NetworkInterface.interfaces
     if Enum.member?(current_interfaces, ifname) do
       send self, :ifadded
     end
@@ -118,7 +118,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
 
   ## Context: :removed
   defp consume(:removed, :ifadded, state) do
-    case NetBasic.ifup(Nerves.InterimWiFi.NetBasic, state.ifname) do
+    case Nerves.NetworkInterface.ifup(state.ifname) do
       :ok ->
         # Check the status and send an initial event through based
         # on whether the interface is up or down
@@ -127,8 +127,8 @@ defmodule Nerves.InterimWiFi.WiFiManager do
         #       It's bad since there's a race condition between when we get the status
         #       and when the update is sent. I can't imagine us hitting the race condition
         #       though. :)
-        {:ok, status} = NetBasic.status(Nerves.InterimWiFi.NetBasic, state.ifname)
-        GenEvent.notify(Nerves.InterimWiFi.EventManager, {:net_basic, Nerves.InterimWiFi.NetBasic, :ifchanged, status})
+        {:ok, status} = Nerves.NetworkInterface.status state.ifname
+        GenEvent.notify(Nerves.InterimWiFi.EventManager, {:nerves_network_interface, self, :ifchanged, status})
 
         state
           |> goto_context(:down)
@@ -147,8 +147,8 @@ defmodule Nerves.InterimWiFi.WiFiManager do
       |> goto_context(:removed)
   end
   defp consume(:retry_add, :retry_ifadded, state) do
-    {:ok, status} = NetBasic.status(Nerves.InterimWiFi.NetBasic, state.ifname)
-    GenEvent.notify(Nerves.InterimWiFi.EventManager, {:net_basic, Nerves.InterimWiFi.NetBasic, :ifchanged, status})
+    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
+    GenEvent.notify(Nerves.InterimWiFi.EventManager, {:nerves_network_interface, self, :ifchanged, status})
 
     state
       |> goto_context(:down)
@@ -268,7 +268,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   end
 
   defp configure(state, info) do
-    :ok = NetBasic.setup(Nerves.InterimWiFi.NetBasic, state.ifname, info)
+    :ok = Nerves.NetworkInterface.setup(state.ifname, info)
     :ok = Nerves.InterimWiFi.Resolvconf.setup(Nerves.InterimWiFi.Resolvconf, state.ifname, info)
     state
   end

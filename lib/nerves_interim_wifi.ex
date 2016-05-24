@@ -7,7 +7,6 @@ defmodule Nerves.InterimWiFi do
 
     children = [
       worker(GenEvent, [[name: Nerves.InterimWiFi.EventManager]]),
-      worker(NetBasic, [Nerves.InterimWiFi.EventManager, [name: Nerves.InterimWiFi.NetBasic]]),
       worker(Nerves.InterimWiFi.Resolvconf, ["/tmp/resolv.conf", [name: Nerves.InterimWiFi.Resolvconf]]),
       supervisor(Nerves.InterimWiFi.IFSupervisor, [[name: Nerves.InterimWiFi.IFSupervisor]]),
     ]

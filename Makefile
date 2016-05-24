@@ -6,7 +6,7 @@
 # LDFLAGS       linker flags for linking all binaries
 # ERL_LDFLAGS   additional linker flags for projects referencing Erlang libraries
 # MIX           path to mix
-# SUDO_ASKPASS  path to ssh-askpass when modifying ownership of net_basic
+# SUDO_ASKPASS  path to ssh-askpass when modifying ownership of udhcpc_wrapper
 # SUDO          path to SUDO. If you don't want the privileged parts to run, set to "true"
 
 LDFLAGS +=
@@ -34,12 +34,9 @@ all: priv/udhcpc_wrapper
 priv/udhcpc_wrapper: src/udhcpc_wrapper.o
 	@mkdir -p priv
 	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
-	# setuid root net_basic so that it can configure network interfaces
+	# setuid root udhcpc_wrapper so that it can call udhcpc
 	SUDO_ASKPASS=$(SUDO_ASKPASS) $(SUDO) -- sh -c 'chown root:root $@; chmod +s $@'
 
 clean:
 	$(MIX) clean
 	rm -f priv/udhcpc_wrapper src/*.o
-
-realclean:
-	rm -fr _build priv/udhcpc_wrapper src/*.o
