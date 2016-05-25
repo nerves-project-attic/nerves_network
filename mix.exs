@@ -45,7 +45,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
     %{files: ["lib", "src/*.[ch]", "test", "mix.exs", "README.md", "LICENSE", "CHANGELOG.md", "Makefile"],
       maintainers: ["Frank Hunleth"],
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/fhunleth/nerves_interim_wifi"}}
+      links: %{"GitHub" => "https://github.com/nerves-project/nerves_interim_wifi"}}
   end
 
   defp deps do
