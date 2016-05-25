@@ -53,8 +53,8 @@ defmodule Nerves.InterimWiFi.Mixfile do
       {:earmark, "~> 0.1", only: :dev},
       {:ex_doc, "~> 0.11", only: :dev},
       {:credo, "~> 0.3", only: [:dev, :test]},
-      {:nerves_network_interface, "~> 0.3.0"},
-      {:nerves_wpa_supplicant, "~> 0.2.0"}
+      {:nerves_network_interface, "~> 0.3.1"},
+      {:nerves_wpa_supplicant, "~> 0.2.1"}
     ]
   end
 end
