@@ -6,7 +6,6 @@ defmodule Nerves.InterimWiFi do
     import Supervisor.Spec, warn: false
 
     children = [
-      worker(GenEvent, [[name: Nerves.InterimWiFi.EventManager]]),
       worker(Nerves.InterimWiFi.Resolvconf, ["/tmp/resolv.conf", [name: Nerves.InterimWiFi.Resolvconf]]),
       supervisor(Nerves.InterimWiFi.IFSupervisor, [[name: Nerves.InterimWiFi.IFSupervisor]]),
     ]

@@ -91,7 +91,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     Logger.info "WiFiManager(#{ifname}) starting"
 
     # Register for nerves_network_interface events
-    GenEvent.add_handler(Nerves.InterimWiFi.EventManager, EventHandler, {self, ifname})
+    GenEvent.add_handler(Nerves.NetworkInterface.event_manager, EventHandler, {self, ifname})
 
     state = %Nerves.InterimWiFi.WiFiManager{settings: settings, ifname: ifname}
 
@@ -128,7 +128,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
         #       and when the update is sent. I can't imagine us hitting the race condition
         #       though. :)
         {:ok, status} = Nerves.NetworkInterface.status state.ifname
-        GenEvent.notify(Nerves.InterimWiFi.EventManager, {:nerves_network_interface, self, :ifchanged, status})
+        GenEvent.notify(Nerves.NetworkInterface.event_manager, {:nerves_network_interface, self, :ifchanged, status})
 
         state
           |> goto_context(:down)
@@ -148,7 +148,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   end
   defp consume(:retry_add, :retry_ifadded, state) do
     {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
-    GenEvent.notify(Nerves.InterimWiFi.EventManager, {:nerves_network_interface, self, :ifchanged, status})
+    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:nerves_network_interface, self, :ifchanged, status})
 
     state
       |> goto_context(:down)
@@ -247,7 +247,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     end
 
     {:ok, pid} = Nerves.WpaSupplicant.start_link(wpa_control_pipe,
-                                          Nerves.InterimWiFi.EventManager)
+                                          Nerves.NetworkInterface.event_manager)
     wpa_supplicant_settings = Map.new(state.settings)
     :ok = Nerves.WpaSupplicant.set_network(pid, wpa_supplicant_settings)
     %Nerves.InterimWiFi.WiFiManager{state | wpa_pid: pid}
