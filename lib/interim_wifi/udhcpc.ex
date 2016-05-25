@@ -16,6 +16,10 @@ defmodule Nerves.InterimWiFi.Udhcpc do
   use GenServer
   require Logger
 
+  @moduledoc """
+  This module interacts with `udhcpc` to interact with DHCP servers.
+  """
+
   @doc """
   Start and link a Udhcpc process for the specified interface (i.e., eth0,
   wlan0).

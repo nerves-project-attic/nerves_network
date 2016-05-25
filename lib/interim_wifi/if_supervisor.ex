@@ -1,6 +1,8 @@
 defmodule Nerves.InterimWiFi.IFSupervisor do
   use Supervisor
 
+  @moduledoc false
+  
   def start_link(options \\ []) do
     Supervisor.start_link(__MODULE__, [], options)
   end

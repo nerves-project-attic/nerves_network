@@ -2,6 +2,34 @@ defmodule Nerves.InterimWiFi do
   use Application
   require Logger
 
+  @moduledoc """
+  The Nerves.InterimWiFi application handles the low level details of connecting
+  to WiFi networks. To quickly get started, create a new Nerves project and add
+  the following line someplace early on in your program:
+
+      Nerves.InterimWiFi.setup "wlan0", ssid: "myssid", key_mgmt: :"WPA-PSK", psk: "secretsecret"
+
+  When you boot your Nerves image, Nerves.InterimWiFi monitors for an interface
+  called "wlan0" to be created. This occurs when you plug in a USB WiFi dongle.
+  If you plug in more than one WiFi dongle, each one will be given a name like
+  "wlan1", etc. Those may be setup as well.
+
+  When not connected, Nerves.InterimWiFi continually scans
+  for the desired access point. Once found, it associates and runs DHCP to
+  acquire an IP address.
+
+  IMPORTANT: This module is called Nerves.InterimWiFi for a reason. Some
+  functionality is missing or awaiting refactoring. The largest pending change is to change how events are
+  handled, and that mostly affects how things work internally. Externally, the event change
+  will allow you to receive notifications of when connections occur or are
+  broken. This doesn't mean that it's
+  unusable, though. If you have fixes that make this work better for your setup, please
+  consider sharing them.
+  """
+
+  @doc """
+  Start the Nerves.InterimWifi OTP Applicantion
+  """
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
@@ -36,7 +64,7 @@ defmodule Nerves.InterimWiFi do
   end
 
   @doc """
-  Stop all control if `ifname`
+  Stop all control of `ifname`
   """
   def teardown(ifname) do
     Logger.debug "#{__MODULE__} teardown(#{ifname})"

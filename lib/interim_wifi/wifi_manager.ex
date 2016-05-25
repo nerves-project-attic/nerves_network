@@ -2,6 +2,8 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   use GenServer
   require Logger
 
+  @moduledoc false
+
   # The following are Nerves locations of the supplicant. If not using
   # Nerves, these may be different.
   @wpa_supplicant_path "/usr/sbin/wpa_supplicant"
@@ -22,6 +24,8 @@ defmodule Nerves.InterimWiFi.WiFiManager do
 
   defmodule EventHandler do
     use GenEvent
+
+    @moduledoc false
 
     def init({manager, ifname}) do
       {:ok, %{manager: manager, ifname: ifname}}
