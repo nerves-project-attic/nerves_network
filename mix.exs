@@ -54,7 +54,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
       {:ex_doc, "~> 0.11", only: :dev},
       {:credo, "~> 0.3", only: [:dev, :test]},
       {:nerves_network_interface, "~> 0.3.0"},
-      {:nerves_wpa_supplicant, github: "nerves-project/nerves_wpa_supplicant", branch: "master"}
+      {:nerves_wpa_supplicant, "~> 0.2.0"}
     ]
   end
 end
