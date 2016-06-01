@@ -2,7 +2,7 @@ defmodule Nerves.InterimWiFi.IFSupervisor do
   use Supervisor
 
   @moduledoc false
-  
+
   def start_link(options \\ []) do
     Supervisor.start_link(__MODULE__, [], options)
   end
@@ -39,8 +39,13 @@ defmodule Nerves.InterimWiFi.IFSupervisor do
 
   # Return the appropriate interface manager based on the interface's name
   # and settings
-  defp manager(_name, _settings) do
-    # Route everything through the wifi manager for now...
+  defp manager(<<"eth", _rest::binary>>, _settings) do
+    # If someone tries to use this for a wired Ethernet connection, just do
+    # DHCP.
+    Nerves.InterimWiFi.DHCPManager
+  end
+  defp manager(_ifname, _settings) do
+    # Default is to assume wifi for now.
     Nerves.InterimWiFi.WiFiManager
   end
 end
