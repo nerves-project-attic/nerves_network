@@ -13,7 +13,6 @@ LDFLAGS +=
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
 CFLAGS += -std=c99
 CC ?= $(CROSSCOMPILE)gcc
-MIX ?= mix
 
 # If not cross-compiling, then run sudo by default
 ifeq ($(origin CROSSCOMPILE), undefined)
@@ -38,5 +37,4 @@ priv/udhcpc_wrapper: src/udhcpc_wrapper.o
 	SUDO_ASKPASS=$(SUDO_ASKPASS) $(SUDO) -- sh -c 'chown root:root $@; chmod +s $@'
 
 clean:
-	$(MIX) clean
 	rm -f priv/udhcpc_wrapper src/*.o

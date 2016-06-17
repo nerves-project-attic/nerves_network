@@ -1,15 +1,3 @@
-defmodule Mix.Tasks.Compile.Udhcpc do
-  @shortdoc "Compiles the port binary"
-  def run(_) do
-    {result, error_code} = System.cmd("make", ["all"], stderr_to_stdout: true)
-    IO.binwrite result
-    if error_code != 0 do
-      raise Mix.Error, "Make returned an error"
-    end
-    Mix.Project.build_structure
-  end
-end
-
 defmodule Nerves.InterimWiFi.Mixfile do
   use Mix.Project
 
@@ -19,12 +7,13 @@ defmodule Nerves.InterimWiFi.Mixfile do
      elixir: "~> 1.2",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     compilers: Mix.compilers ++ [:Udhcpc],
-     deps: deps,
+     compilers: [:elixir_make] ++ Mix.compilers,
+     make_clean: ["clean"],
+     deps: deps(),
      docs: [extras: ["README.md"]],
-     package: package,
-     description: description
-	]
+     package: package(),
+     description: description()
+    ]
   end
 
   # Configuration for the OTP application
@@ -50,6 +39,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
 
   defp deps do
     [
+      {:elixir_make, "~> 0.1"},
       {:earmark, "~> 0.1", only: :dev},
       {:ex_doc, "~> 0.11", only: :dev},
       {:credo, "~> 0.3", only: [:dev, :test]},
