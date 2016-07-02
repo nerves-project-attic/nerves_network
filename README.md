@@ -1,5 +1,6 @@
 # Nerves.InterimWiFi
 [![Build Status](https://travis-ci.org/nerves-project/nerves_interim_wifi.svg?branch=master)](https://travis-ci.org/nerves-project/nerves_interim_wifi)
+[![Hex version](https://img.shields.io/hexpm/v/nerves_interim_wifi.svg "Hex version")](https://hex.pm/packages/nerves_interim_wifi)
 
 Connect to WiFi networks on Nerves platforms.
 
