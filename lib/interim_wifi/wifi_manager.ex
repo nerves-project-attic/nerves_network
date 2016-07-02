@@ -253,7 +253,13 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     {:ok, pid} = Nerves.WpaSupplicant.start_link(wpa_control_pipe,
                                           Nerves.NetworkInterface.event_manager)
     wpa_supplicant_settings = Map.new(state.settings)
-    :ok = Nerves.WpaSupplicant.set_network(pid, wpa_supplicant_settings)
+    case Nerves.WpaSupplicant.set_network(pid, wpa_supplicant_settings) do
+      :ok -> :ok
+      error ->
+        Logger.info "WiFiManager(#{state.ifname}, #{state.context}) wpa_supplicant set_network error: #{inspect error}"
+        # TODO: Send event here
+    end
+
     %Nerves.InterimWiFi.WiFiManager{state | wpa_pid: pid}
   end
 
