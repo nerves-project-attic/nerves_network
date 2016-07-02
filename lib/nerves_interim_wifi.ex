@@ -75,16 +75,16 @@ defmodule Nerves.InterimWiFi do
   Return a map with the current configuration and interface status.
   """
   def status(ifname) do
-    Logger.debug "#{__MODULE__} status(#{ifname})"
-    Nerves.InterimWiFi.IFSupervisor.status ifname
+    Logger.debug "#{__MODULE__} status(#{ifname}) NOT IMPLEMENTED"
+    #Nerves.InterimWiFi.IFSupervisor.status ifname
   end
 
   @doc """
   If `ifname` is a wireless LAN, scan for access points.
   """
   def scan(ifname) do
-    Logger.debug "#{__MODULE__} scan(#{ifname})"
-    Nerves.InterimWiFi.IFSupervisor.scan ifname
+    Logger.debug "#{__MODULE__} scan(#{ifname}) NOT IMPLEMENTED"
+    #Nerves.InterimWiFi.IFSupervisor.scan ifname
   end
 
   @doc """
