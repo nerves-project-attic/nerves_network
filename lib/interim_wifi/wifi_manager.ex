@@ -144,6 +144,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     end
   end
   defp consume(:removed, :retry_ifadded, state), do: state
+  defp consume(:removed, :ifdown, state), do: state
 
   ## Context: :retry_add
   defp consume(:retry_add, :ifremoved, state) do
