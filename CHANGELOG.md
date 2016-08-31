@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.0
+
+  * Bug fixes
+    * Handle strange latent ifdown
+
 ## v0.0.2
 
   * Bug fixes
