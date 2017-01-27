@@ -3,7 +3,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
 
   def project do
     [app: :nerves_interim_wifi,
-     version: "0.1.0",
+     version: "0.1.1",
      elixir: "~> 1.2",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -40,7 +40,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
   defp deps do
     [
       {:elixir_make, "~> 0.3"},
-      {:earmark, "~> 0.1", only: :dev},
+      {:earmark, "~> 1.0", only: :dev},
       {:ex_doc, "~> 0.11", only: :dev},
       {:credo, "~> 0.3", only: [:dev, :test]},
       {:nerves_network_interface, "~> 0.3.1"},
