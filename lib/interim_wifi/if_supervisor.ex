@@ -11,6 +11,9 @@ defmodule Nerves.InterimWiFi.IFSupervisor do
       {:ok, {{:one_for_one, 10, 3600}, []}}
   end
 
+  def setup(ifname, settings) when is_atom(ifname) do
+    setup(to_string(ifname), settings)
+  end
   def setup(ifname, settings) do
     pidname = pname(ifname)
     if !Process.whereis(pidname) do
