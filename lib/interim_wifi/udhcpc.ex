@@ -58,7 +58,7 @@ defmodule Nerves.InterimWiFi.Udhcpc do
             "--interface", ifname,
             "--script", port_path,
             "--foreground"]
-          |> add_hostname_arg(hostname)
+          |> add_hostname_arg(hostname())
     port = Port.open({:spawn_executable, port_path},
                      [{:args, args}, :exit_status, :stderr_to_stdout, {:line, 256}])
     {:ok, %{ifname: ifname, port: port}}
@@ -99,29 +99,29 @@ defmodule Nerves.InterimWiFi.Udhcpc do
 
   defp handle_udhcpc(["deconfig", ifname | _rest], state) do
     Logger.info "Deconfigure #{ifname}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self, :deconfig, %{ifname: ifname}})
+    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :deconfig, %{ifname: ifname}})
     {:noreply, state}
   end
   defp handle_udhcpc(["bound", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
     Logger.info "Bound #{ifname}: IP=#{ip}, dns=#{inspect dns}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist}})
+    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist}})
     {:noreply, state}
   end
   defp handle_udhcpc(["renew", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
     Logger.info "Renew #{ifname}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self, :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist}})
+    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist}})
     {:noreply, state}
   end
   defp handle_udhcpc(["leasefail", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
     Logger.info "#{ifname}: leasefail #{message}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self, :leasefail, %{ifname: ifname, message: message}})
+    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :leasefail, %{ifname: ifname, message: message}})
     {:noreply, state}
   end
   defp handle_udhcpc(["nak", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
     Logger.info "#{ifname}: NAK #{message}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self, :nak, %{ifname: ifname, message: message}})
+    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :nak, %{ifname: ifname, message: message}})
     {:noreply, state}
   end
   defp handle_udhcpc(something_else, state) do
@@ -133,7 +133,7 @@ defmodule Nerves.InterimWiFi.Udhcpc do
   defp hostname() do
     # Turn :sname@host into a hostname
     # Returns "nohost" if Erlang distribution not enabled
-    node
+    node()
       |> to_string
       |> String.split("@")
       |> Enum.at(1)

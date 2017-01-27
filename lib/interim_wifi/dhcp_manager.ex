@@ -76,7 +76,7 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     Logger.info "DHCPManager(#{ifname}) starting"
 
     # Register for nerves_network_interface events
-    GenEvent.add_handler(Nerves.NetworkInterface.event_manager, EventHandler, {self, ifname})
+    GenEvent.add_handler(Nerves.NetworkInterface.event_manager, EventHandler, {self(), ifname})
 
     state = %Nerves.InterimWiFi.DHCPManager{settings: settings, ifname: ifname}
 
@@ -84,7 +84,7 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
     if Enum.member?(current_interfaces, ifname) do
-      send self, :ifadded
+      send self(), :ifadded
     end
 
     {:ok, state}
@@ -113,13 +113,13 @@ defmodule Nerves.InterimWiFi.DHCPManager do
         #       and when the update is sent. I can't imagine us hitting the race condition
         #       though. :)
         {:ok, status} = Nerves.NetworkInterface.status state.ifname
-        GenEvent.notify(Nerves.NetworkInterface.event_manager, {:nerves_network_interface, self, :ifchanged, status})
+        GenEvent.notify(Nerves.NetworkInterface.event_manager, {:nerves_network_interface, self(), :ifchanged, status})
 
         state
           |> goto_context(:down)
       {:error, _} ->
         # The interface isn't quite up yet. Retry
-        Process.send_after self, :retry_ifadded, 250
+        Process.send_after self(), :retry_ifadded, 250
         state
           |> goto_context(:retry_add)
     end
@@ -133,7 +133,7 @@ defmodule Nerves.InterimWiFi.DHCPManager do
   end
   defp consume(:retry_add, :retry_ifadded, state) do
     {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:nerves_network_interface, self, :ifchanged, status})
+    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:nerves_network_interface, self(), :ifchanged, status})
 
     state
       |> goto_context(:down)
