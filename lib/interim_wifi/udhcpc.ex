@@ -15,6 +15,7 @@
 defmodule Nerves.InterimWiFi.Udhcpc do
   use GenServer
   require Logger
+  alias Nerves.InterimWiFi.Utils
 
   @moduledoc """
   This module interacts with `udhcpc` to interact with DHCP servers.
@@ -48,10 +49,16 @@ defmodule Nerves.InterimWiFi.Udhcpc do
   Stop the dhcp client
   """
   def stop(pid) do
-    GenServer.cast(pid, :stop)
+    GenServer.stop(pid)
+    #GenServer.cast(pid, :stop)
   end
 
   def init(ifname) do
+    case Registry.start_link(:duplicate, Nerves.Udhcpc) do
+      {:ok, _} -> :noop
+      {:error, {:already_started, _}} -> :noop
+      _ -> raise "Cannot Start #{__MODULE__} Registry"
+    end
     priv_path = :code.priv_dir(:nerves_interim_wifi)
     port_path = "#{priv_path}/udhcpc_wrapper"
     args = ["udhcpc",
@@ -86,9 +93,9 @@ defmodule Nerves.InterimWiFi.Udhcpc do
     {:reply, :ok, state}
   end
 
-  def handle_cast(:stop, state) do
-    {:stop, :normal, state}
-  end
+  # def handle_cast(:stop, state) do
+  #   {:stop, :normal, state}
+  # end
 
   def handle_info({_, {:data, {:eol, message}}}, state) do
     message
@@ -99,29 +106,30 @@ defmodule Nerves.InterimWiFi.Udhcpc do
 
   defp handle_udhcpc(["deconfig", ifname | _rest], state) do
     Logger.info "Deconfigure #{ifname}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :deconfig, %{ifname: ifname}})
+
+    Utils.notify(Nerves.Udhcpc, state.ifname, :deconfig, %{ifname: ifname})
     {:noreply, state}
   end
   defp handle_udhcpc(["bound", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
     Logger.info "Bound #{ifname}: IP=#{ip}, dns=#{inspect dns}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist}})
+    Utils.notify(Nerves.Udhcpc, state.ifname, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
     {:noreply, state}
   end
   defp handle_udhcpc(["renew", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
     Logger.info "Renew #{ifname}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist}})
+    Utils.notify(Nerves.Udhcpc, state.ifname, :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
     {:noreply, state}
   end
   defp handle_udhcpc(["leasefail", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
     Logger.info "#{ifname}: leasefail #{message}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :leasefail, %{ifname: ifname, message: message}})
+    Utils.notify(Nerves.Udhcpc, state.ifname, :leasefail, %{ifname: ifname, message: message})
     {:noreply, state}
   end
   defp handle_udhcpc(["nak", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
     Logger.info "#{ifname}: NAK #{message}"
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:udhcpc, self(), :nak, %{ifname: ifname, message: message}})
+    Utils.notify(Nerves.Udhcpc, state.ifname, :nak, %{ifname: ifname, message: message})
     {:noreply, state}
   end
   defp handle_udhcpc(something_else, state) do
