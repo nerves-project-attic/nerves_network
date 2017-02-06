@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.0-dev
+
+* Enhancements
+  * Replaced GenEvent with Registry
+
 ## v0.1.1
 
   * Bug fixes
