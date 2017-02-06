@@ -1,6 +1,7 @@
 defmodule Nerves.InterimWiFi.DHCPManager do
   use GenServer
   require Logger
+  alias Nerves.InterimWiFi.Utils
 
   @moduledoc false
 
@@ -15,85 +16,96 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
-  defmodule EventHandler do
-    use GenEvent
-
-    @moduledoc false
-
-    def init({manager, ifname}) do
-      {:ok, %{manager: manager, ifname: ifname}}
-    end
-
-    def handle_event({:nerves_network_interface, _, :ifadded, %{:ifname => ifname}}, %{:ifname => ifname} = state) do
-      Logger.info "DHCPManager.EventHandler(#{state.ifname}) ifadded"
-      send state.manager, :ifadded
-      {:ok, state}
-    end
-    # :ifmoved occurs on systems that assign stable names to removable
-    # interfaces. I.e. the interface is added under the dynamically chosen
-    # name and then quickly renamed to something that is stable across boots.
-    def handle_event({:nerves_network_interface, _, :ifmoved, %{:ifname => ifname}}, %{:ifname => ifname} = state) do
-      Logger.info "DHCPManager.EventHandler(#{state.ifname}) ifadded (moved)"
-      send state.manager, :ifadded
-      {:ok, state}
-    end
-    def handle_event({:nerves_network_interface, _, :ifremoved, %{:ifname => ifname}}, %{:ifname => ifname} = state) do
-      Logger.info "DHCPManager.EventHandler(#{state.ifname}) ifremoved"
-      send state.manager, :ifremoved
-      {:ok, state}
-    end
-
-    # Filter out ifup and ifdown events
-    # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
-    # :is_lower_up reports whether the interface as associated with an AP
-    def handle_event({:nerves_network_interface, _, :ifchanged, %{:ifname => ifname, :is_lower_up => true}}, %{:ifname => ifname} = state) do
-      Logger.info "DHCPManager.EventHandler(#{state.ifname}) ifup"
-      send state.manager, :ifup
-      {:ok, state}
-    end
-    def handle_event({:nerves_network_interface, _, :ifchanged, %{:ifname => ifname, :is_lower_up => false}}, %{:ifname => ifname} = state) do
-      Logger.info "DHCPManager.EventHandler(#{ifname}) ifdown"
-      send state.manager, :ifdown
-      {:ok, state}
-    end
-
-    # DHCP events
-    # :bound, :renew, :deconfig, :nak
-    def handle_event({:udhcpc, _, event, %{:ifname => ifname} = info}, %{:ifname => ifname} = state) do
-      Logger.info "DHCPManager.EventHandler(#{state.ifname}) udhcpc #{inspect event}"
-      send state.manager, {event, info}
-      {:ok, state}
-    end
-
-    def handle_event(event, state) do
-      Logger.info "DHCPManager.EventHandler(#{state.ifname}): ignoring event: #{inspect event}"
-      {:ok, state}
-    end
-  end
+  # defmodule EventHandler do
+  #   use GenServer
+  #
+  #   @moduledoc false
+  #
+  #   def start_link(opts) do
+  #     GenServer.start_link(__MODULE__, opts)
+  #   end
+  #
+  #   def init({manager, ifname}) do
+  #     {:ok, %{manager: manager, ifname: ifname}}
+  #   end
+  #
+  #
+  # end
 
   def init({ifname, settings}) do
     # Make sure that the interface is enabled or nothing will work.
     Logger.info "DHCPManager(#{ifname}) starting"
 
     # Register for nerves_network_interface events
-    GenEvent.add_handler(Nerves.NetworkInterface.event_manager, EventHandler, {self(), ifname})
+    {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
 
     state = %Nerves.InterimWiFi.DHCPManager{settings: settings, ifname: ifname}
-
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
-    if Enum.member?(current_interfaces, ifname) do
-      send self(), :ifadded
-    end
+    state =
+      if Enum.member?(current_interfaces, ifname) do
+        consume(state.context, :ifadded, state)
+      else
+        state
+      end
 
     {:ok, state}
   end
 
-  def handle_info(event, state) do
-    Logger.info "DHCPManager(#{state.ifname}, #{state.context}) got event #{inspect event}"
-    state = consume(state.context, event, state)
-    {:noreply, state}
+  def handle_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
+    Logger.info "DHCPManager.EventHandler(#{ifname}) ifadded"
+    :ifadded
+  end
+  # :ifmoved occurs on systems that assign stable names to removable
+  # interfaces. I.e. the interface is added under the dynamically chosen
+  # name and then quickly renamed to something that is stable across boots.
+  def handle_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
+    Logger.info "DHCPManager.EventHandler(#{ifname}) ifadded (moved)"
+    :ifadded
+  end
+  def handle_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
+    Logger.info "DHCPManager.EventHandler(#{ifname}) ifremoved"
+    :ifremoved
+  end
+
+  # Filter out ifup and ifdown events
+  # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
+  # :is_lower_up reports whether the interface as associated with an AP
+  def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}) do
+    Logger.info "DHCPManager.EventHandler(#{ifname}) ifup"
+    :ifup
+  end
+  def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}) do
+    Logger.info "DHCPManager.EventHandler(#{ifname}) ifdown"
+    :ifdown
+  end
+
+  # # DHCP events
+  # # :bound, :renew, :deconfig, :nak
+
+
+  def handle_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
+    Logger.info "DHCPManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
+    :noop
+  end
+
+  def handle_info({Nerves.NetworkInterface, _, _} = event, %{ifname: ifname} = s) do
+    event = handle_event(event)
+    s = consume(s.context, event, s)
+    Logger.info "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
+    {:noreply, s}
+  end
+
+  def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
+    Logger.info "DHCPManager.EventHandler(#{s.ifname}) udhcpc #{inspect event}"
+    s = consume(s.context, {event, info}, s)
+    {:noreply, s}
+  end
+
+  def handle_info(event, s) do
+    Logger.info "DHCPManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
+    {:noreply, s}
   end
 
   ## State machine implementation
@@ -101,19 +113,13 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     %Nerves.InterimWiFi.DHCPManager{state | context: newcontext}
   end
 
+  defp consume(_, :noop, state), do: state
   ## Context: :removed
   defp consume(:removed, :ifadded, state) do
     case Nerves.NetworkInterface.ifup(state.ifname) do
       :ok ->
-        # Check the status and send an initial event through based
-        # on whether the interface is up or down
-        # NOTE: GenEvent.notify/2 is asynchronous which is good and bad. It's
-        #       good since if it were synchronous, we'd certainly mess up our state.
-        #       It's bad since there's a race condition between when we get the status
-        #       and when the update is sent. I can't imagine us hitting the race condition
-        #       though. :)
         {:ok, status} = Nerves.NetworkInterface.status state.ifname
-        GenEvent.notify(Nerves.NetworkInterface.event_manager, {:nerves_network_interface, self(), :ifchanged, status})
+        Utils.notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
         state
           |> goto_context(:down)
@@ -133,7 +139,7 @@ defmodule Nerves.InterimWiFi.DHCPManager do
   end
   defp consume(:retry_add, :retry_ifadded, state) do
     {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
-    GenEvent.notify(Nerves.NetworkInterface.event_manager, {:nerves_network_interface, self(), :ifchanged, status})
+    Utils.notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
     state
       |> goto_context(:down)
@@ -190,6 +196,7 @@ defmodule Nerves.InterimWiFi.DHCPManager do
   defp start_udhcpc(state) do
     state = stop_udhcpc(state)
     {:ok, pid} = Nerves.InterimWiFi.Udhcpc.start_link(state.ifname)
+    {:ok, _} = Registry.register(Nerves.Udhcpc, state.ifname, [])
     %Nerves.InterimWiFi.DHCPManager{state | dhcp_pid: pid}
   end
 
