@@ -95,7 +95,13 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     Logger.info "WiFiManager.EventHandler(#{ifname}) wifi_disconnected"
     :wifi_disconnected
   end
+
+  # Ignore events
   def handle_event({Nerves.WpaSupplicant, event, %{ifname: ifname}}) do
+    Logger.info "WiFiManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
+    :noop
+  end
+  def handle_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
     Logger.info "WiFiManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
     :noop
   end
@@ -103,27 +109,16 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   # # DHCP events
   # # :bound, :renew, :deconfig, :nak
   def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
-    Logger.info "DHCPManager.EventHandler(#{s.ifname}) udhcpc #{inspect event}"
+    Logger.info "DHCPManager.EventHandler(#{ifname}) udhcpc #{inspect event}"
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
-  end
-
-  def handle_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
-    :noop
   end
 
   def handle_info({registry, _, _} = event, %{ifname: ifname} = s)
    when registry in [Nerves.NetworkInterface, Nerves.WpaSupplicant] do
     event = handle_event(event)
-    Logger.info "WiFiManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
+    Logger.info "WiFiManager(#{ifname}, #{s.context}) got event #{inspect event}"
     s = consume(s.context, event, s)
-    {:noreply, s}
-  end
-
-  def handle_info({Nerves.InterimWiFi.Udhcpc, event, info}, %{ifname: ifname} = s) do
-    Logger.info "WiFiManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
-    s = consume(s.context, {event, info}, s)
     {:noreply, s}
   end
 
@@ -131,12 +126,6 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     Logger.info "WiFiManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
     {:noreply, s}
   end
-
-  # def handle_info(event, state) do
-  #   Logger.info "WiFiManager(#{state.ifname}, #{state.context}) got event #{inspect event}"
-  #   state = consume(state.context, event, state)
-  #   {:noreply, state}
-  # end
 
   ## State machine implementation
   defp goto_context(state, newcontext) do
