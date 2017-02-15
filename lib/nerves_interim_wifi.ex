@@ -1,5 +1,4 @@
 defmodule Nerves.InterimWiFi do
-  use Application
   require Logger
 
   @moduledoc """
@@ -26,24 +25,7 @@ defmodule Nerves.InterimWiFi do
   unusable, though. If you have fixes that make this work better for your setup, please
   consider sharing them.
   """
-
-  @doc """
-  Start the Nerves.InterimWifi OTP Applicantion
-  """
-  def start(_type, _args) do
-    import Supervisor.Spec, warn: false
-
-    children = [
-      worker(Nerves.InterimWiFi.Resolvconf, ["/tmp/resolv.conf", [name: Nerves.InterimWiFi.Resolvconf]]),
-      supervisor(Nerves.InterimWiFi.IFSupervisor, [[name: Nerves.InterimWiFi.IFSupervisor]]),
-    ]
-
-    # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
-    # for other strategies and supported options
-    opts = [strategy: :rest_for_one, name: Nerves.InterimWiFi.Supervisor]
-    Supervisor.start_link(children, opts)
-  end
-
+  
   @doc """
   Configure the specified interface. Settings contains one or more of the
   following:

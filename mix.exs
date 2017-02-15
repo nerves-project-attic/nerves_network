@@ -20,8 +20,8 @@ defmodule Nerves.InterimWiFi.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger, :nerves_network_interface, :nerves_wpa_supplicant],
-     mod: {Nerves.InterimWiFi, []}]
+    [extra_applications: [:logger],
+     mod: {Nerves.InterimWiFi.Application, []}]
   end
 
   defp description do

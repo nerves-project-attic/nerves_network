@@ -54,11 +54,6 @@ defmodule Nerves.InterimWiFi.Udhcpc do
   end
 
   def init(ifname) do
-    case Registry.start_link(:duplicate, Nerves.Udhcpc) do
-      {:ok, _} -> :noop
-      {:error, {:already_started, _}} -> :noop
-      _ -> raise "Cannot Start #{__MODULE__} Registry"
-    end
     priv_path = :code.priv_dir(:nerves_interim_wifi)
     port_path = "#{priv_path}/udhcpc_wrapper"
     args = ["udhcpc",
