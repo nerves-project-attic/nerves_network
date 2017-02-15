@@ -7,7 +7,7 @@ defmodule Nerves.InterimWiFi.Application do
     import Supervisor.Spec, warn: false
 
     children = [
-      worker(Registry, [:duplicate, Nerves.Udhcpc], restart: :transient),
+      supervisor(Registry, [:duplicate, Nerves.Udhcpc]),
       worker(Nerves.InterimWiFi.Resolvconf, ["/tmp/resolv.conf", [name: Nerves.InterimWiFi.Resolvconf]]),
       supervisor(Nerves.InterimWiFi.IFSupervisor, [[name: Nerves.InterimWiFi.IFSupervisor]]),
     ]
