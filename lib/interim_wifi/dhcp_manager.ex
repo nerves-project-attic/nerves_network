@@ -90,14 +90,14 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     :noop
   end
 
-  def handle_info({Nerves.NetworkInterface, _, _} = event, %{ifname: ifname} = s) do
+  def handle_info({Nerves.NetworkInterface, _, _} = event, s) do
     event = handle_event(event)
     s = consume(s.context, event, s)
     Logger.info "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
     {:noreply, s}
   end
 
-  def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
+  def handle_info({Nerves.Udhcpc, event, info}, s) do
     Logger.info "DHCPManager.EventHandler(#{s.ifname}) udhcpc #{inspect event}"
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
