@@ -220,6 +220,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   end
 
   ## Context: :up
+  defp consume(:up, :renew, state), do: state
   defp consume(:up, :ifup, state), do: state
   defp consume(:up, :ifdown, state) do
     state
