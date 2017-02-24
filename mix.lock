@@ -1,7 +1,5 @@
-%{"bunt": {:hex, :bunt, "0.2.0", "951c6e801e8b1d2cbe58ebbd3e616a869061ddadcc4863d0a2182541acae9a38", [:mix], []},
-  "credo": {:hex, :credo, "0.6.0", "44a82f82b94eeb4ba6092c89b8a6730ca1a3291c7940739d5acc8806d25ac991", [:mix], [{:bunt, "~> 0.2.0", [hex: :bunt, optional: false]}]},
-  "earmark": {:hex, :earmark, "1.1.0", "8c2bf85d725050a92042bc1edf362621004d43ca6241c756f39612084e95487f", [:mix], []},
+%{"earmark": {:hex, :earmark, "1.1.1", "433136b7f2e99cde88b745b3a0cfc3fbc81fe58b918a09b40fce7f00db4d8187", [:mix], []},
   "elixir_make": {:hex, :elixir_make, "0.4.0", "992f38fabe705bb45821a728f20914c554b276838433349d4f2341f7a687cddf", [:mix], []},
-  "ex_doc": {:hex, :ex_doc, "0.14.5", "c0433c8117e948404d93ca69411dd575ec6be39b47802e81ca8d91017a0cf83c", [:mix], [{:earmark, "~> 1.0", [hex: :earmark, optional: false]}]},
-  "nerves_network_interface": {:hex, :nerves_network_interface, "0.3.3", "0a49e00f9f0bdb482e94d8e9885cf0a250ae04cc18d248d83bc184b8813ddda2", [:make, :mix], [{:elixir_make, "~> 0.3", [hex: :elixir_make, optional: false]}]},
-  "nerves_wpa_supplicant": {:hex, :nerves_wpa_supplicant, "0.2.3", "2666b21bf0868f0d3b127930c3bacf59b178a0d015d308ae3985dcb7c1595870", [:make, :mix], [{:elixir_make, "~> 0.3", [hex: :elixir_make, optional: false]}]}}
+  "ex_doc": {:hex, :ex_doc, "0.15.0", "e73333785eef3488cf9144a6e847d3d647e67d02bd6fdac500687854dd5c599f", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, optional: false]}]},
+  "nerves_network_interface": {:hex, :nerves_network_interface, "0.4.0", "a8e7662cd56fb4fe9060c891d35c43bbbff692ee6fd2d5efd538717da0cd96b8", [:make, :mix], [{:elixir_make, "~> 0.3", [hex: :elixir_make, optional: false]}]},
+  "nerves_wpa_supplicant": {:hex, :nerves_wpa_supplicant, "0.3.0", "dfda748df2662e1e9e95df6662c3a512d371ef23359b2c090b9c8c884b236a3d", [:make, :mix], [{:elixir_make, "~> 0.3", [hex: :elixir_make, optional: false]}]}}
