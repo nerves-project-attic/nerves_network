@@ -117,7 +117,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   def handle_info({registry, _, _} = event, %{ifname: ifname} = s)
    when registry in [Nerves.NetworkInterface, Nerves.WpaSupplicant] do
     event = handle_event(event)
-    Logger.info "WiFiManager(#{ifname}, #{s.context}) got event #{inspect event}"
+    Logger.info "#{inspect registry} - WiFiManager(#{ifname}, #{s.context}) got event #{inspect event}"
     s = consume(s.context, event, s)
     {:noreply, s}
   end
@@ -218,6 +218,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
       |> stop_udhcpc
       |> goto_context(:associate_wifi)
   end
+  defp consume(:dhcp, _probably_not_important, state), do: state
 
   ## Context: :up
   defp consume(:up, :renew, state), do: state
