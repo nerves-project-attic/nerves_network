@@ -6,27 +6,29 @@ Connect to WiFi networks on Nerves platforms.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
 
-  1. Add nerves_interim_wifi to your list of dependencies in `mix.exs`:
+1. Add nerves_interim_wifi to your list of dependencies in `mix.exs`:
+    ```
+    def deps do
+      [{:nerves_interim_wifi, "~> 0.2.0"}]
+    end
+    ```
 
-        def deps do
-          [{:nerves_interim_wifi, "~> 0.1.0"}]
-        end
+2. Ensure nerves_interim_wifi is started before your application:
+  ```
+  def application do
+    [applications: [:nerves_interim_wifi]]
+  end
+  ```
 
-  2. Ensure nerves_interim_wifi is started before your application:
-
-        def application do
-          [applications: [:nerves_interim_wifi]]
-        end
-
-  3. Set the regulatory domain in your `config.exs`. This should be set to the
-     ISO 3166-1 alpha-2 country code where the device is running. If your device
-     ships to more than one country, see `Nerves.InterimWifi.set_regulatory_domain\1`.
-
-        # if unset, the default regulatory domain is the world domain, "00"
-        config :nerves_interim_wifi,
-          regulatory_domain: "US"
+3. Set the regulatory domain in your `config.exs`. This should be set to the
+   ISO 3166-1 alpha-2 country code where the device is running. If your device
+   ships to more than one country, see `Nerves.InterimWifi.set_regulatory_domain\1`.
+     * if unset, the default regulatory domain is the world domain, "00"
+      ```
+      config :nerves_interim_wifi,
+        regulatory_domain: "US"
+      ```
 
 ## Running
 
@@ -35,7 +37,7 @@ Setup your WiFi connection by running:
     Nerves.InterimWiFi.setup "wlan0", ssid: "my_accesspoint_name", key_mgmt: :"WPA-PSK", psk: "secret"
 
 If your WiFi network does not use a secret key, specify the `key_mgmt` to be `:NONE`.
-Currently, wireless configuration passes almost unaltered to [wpa_supplicant.ex](https://github.com/fhunleth/wpa_supplicant.ex), so see that
+Currently, wireless configuration passes almost unaltered to [wpa_supplicant.ex](https://github.com/nerves-project/nerves_wpa_supplicant), so see that
 project for more configuration options.
 
 ## Limitations
