@@ -36,6 +36,24 @@ defmodule Nerves.InterimWiFi.IFSupervisor do
     end
   end
 
+  def scan(ifname) do
+     pidname = pname(ifname)
+     if Process.whereis(pidname) do
+       GenServer.call(pidname, :scan, 30_000)
+     else
+       {:error, :not_started}
+     end
+  end
+
+  def status(ifname) do
+     pidname = pname(ifname)
+     if Process.whereis(pidname) do
+       Nerves.NetworkInterface.status(ifname)
+     else
+       {:error, :not_started}
+     end
+  end
+
   defp pname(ifname) do
     String.to_atom("Nerves.InterimWifi.Interface." <> ifname)
   end

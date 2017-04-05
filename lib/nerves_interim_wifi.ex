@@ -25,7 +25,7 @@ defmodule Nerves.InterimWiFi do
   unusable, though. If you have fixes that make this work better for your setup, please
   consider sharing them.
   """
-  
+
   @doc """
   Configure the specified interface. Settings contains one or more of the
   following:
@@ -57,16 +57,14 @@ defmodule Nerves.InterimWiFi do
   Return a map with the current configuration and interface status.
   """
   def status(ifname) do
-    Logger.debug "#{__MODULE__} status(#{ifname}) NOT IMPLEMENTED"
-    #Nerves.InterimWiFi.IFSupervisor.status ifname
+    Nerves.InterimWiFi.IFSupervisor.status ifname
   end
 
   @doc """
   If `ifname` is a wireless LAN, scan for access points.
   """
   def scan(ifname) do
-    Logger.debug "#{__MODULE__} scan(#{ifname}) NOT IMPLEMENTED"
-    #Nerves.InterimWiFi.IFSupervisor.scan ifname
+    Nerves.InterimWiFi.IFSupervisor.scan ifname
   end
 
   @doc """

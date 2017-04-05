@@ -106,6 +106,16 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     :noop
   end
 
+  def handle_call(:scan, _from, %{wpa_pid: wpa_pid} = s) do
+    results = Nerves.WpaSupplicant.scan(wpa_pid)
+    {:reply, results, s}
+  end
+
+  def handle_call(:status, _from, %{wpa_pid: wpa_pid} = s) do
+    results = Nerves.WpaSupplicant.status(wpa_pid)
+    {:reply, results, s}
+  end
+
   # # DHCP events
   # # :bound, :renew, :deconfig, :nak
   def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
@@ -125,6 +135,10 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   def handle_info(event, s) do
     Logger.info "WiFiManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
     {:noreply, s}
+  end
+
+  def terminate(_, s) do
+    stop_wpa(s)
   end
 
   ## State machine implementation
@@ -264,13 +278,12 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     {:ok, pid} = Nerves.WpaSupplicant.start_link(state.ifname, wpa_control_pipe, name: :"Nerves.WpaSupplicant.#{state.ifname}")
     Logger.info "Register Nerves.WpaSupplicant #{inspect state.ifname}"
     {:ok, _} = Registry.register(Nerves.WpaSupplicant, state.ifname, [])
-    |> IO.inspect
     wpa_supplicant_settings = Map.new(state.settings)
     case Nerves.WpaSupplicant.set_network(pid, wpa_supplicant_settings) do
       :ok -> :ok
       error ->
         Logger.info "WiFiManager(#{state.ifname}, #{state.context}) wpa_supplicant set_network error: #{inspect error}"
-        # TODO: Send event here
+        Utils.notify(Nerves.WpaSupplicant, state.ifname, error, %{ifname: state.ifname})
     end
 
     %Nerves.InterimWiFi.WiFiManager{state | wpa_pid: pid}
