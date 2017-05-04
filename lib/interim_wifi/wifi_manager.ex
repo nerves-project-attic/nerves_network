@@ -237,6 +237,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   ## Context: :up
   defp consume(:up, :renew, state), do: state
   defp consume(:up, :ifup, state), do: state
+  defp consume(:up, {:bound, _info}, state), do: state # already configured.
   defp consume(:up, :ifdown, state) do
     state
       |> stop_udhcpc
