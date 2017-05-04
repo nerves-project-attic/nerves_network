@@ -14,14 +14,7 @@ Connect to WiFi networks on Nerves platforms.
     end
     ```
 
-2. Ensure nerves_interim_wifi is started before your application:
-  ``` elixir
-  def application do
-    [applications: [:nerves_interim_wifi]]
-  end
-  ```
-
-3. Set the regulatory domain in your `config.exs`. This should be set to the
+2. Set the regulatory domain in your `config.exs`. This should be set to the
    ISO 3166-1 alpha-2 country code where the device is running. If your device
    ships to more than one country, see `Nerves.InterimWiFi.set_regulatory_domain\1`.
      * if unset, the default regulatory domain is the world domain, "00"
