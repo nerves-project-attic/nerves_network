@@ -39,7 +39,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
 
   defp deps do
     [
-      {:elixir_make, "~> 0.3"},
+      {:elixir_make, "~> 0.4", runtime: false },
       {:ex_doc, "~> 0.11", only: :dev},
       {:nerves_network_interface, "~> 0.4.0"},
       {:nerves_wpa_supplicant, "~> 0.3.0"}
