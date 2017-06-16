@@ -3,8 +3,8 @@ defmodule Nerves.InterimWiFi.Mixfile do
 
   def project do
     [app: :nerves_interim_wifi,
-     version: "0.2.1-dev",
-     elixir: "~> 1.2",
+     version: "0.3.0-dev",
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      compilers: [:elixir_make] ++ Mix.compilers,
@@ -18,7 +18,7 @@ defmodule Nerves.InterimWiFi.Mixfile do
 
   # Configuration for the OTP application
   #
-  # Type "mix help compile.app" for more information
+  # Type `mix help compile.app` for more information
   def application do
     [extra_applications: [:logger],
      mod: {Nerves.InterimWiFi.Application, []}]
@@ -39,10 +39,10 @@ defmodule Nerves.InterimWiFi.Mixfile do
 
   defp deps do
     [
-      {:elixir_make, "~> 0.4", runtime: false },
-      {:ex_doc, "~> 0.11", only: :dev},
+      {:system_registry, "~> 0.2.1"},
       {:nerves_network_interface, "~> 0.4.0"},
-      {:nerves_wpa_supplicant, "~> 0.3.0"}
-    ]
+      {:nerves_wpa_supplicant, "~> 0.3.0"},
+      {:elixir_make, "~> 0.4", runtime: false},
+      {:ex_doc, "~> 0.11", only: :dev}]
   end
 end
