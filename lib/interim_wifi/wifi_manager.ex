@@ -1,7 +1,7 @@
 defmodule Nerves.InterimWiFi.WiFiManager do
   use GenServer
   require Logger
-  alias Nerves.InterimWiFi.Utils
+  import Nerves.InterimWiFi.Utils
 
   @moduledoc false
 
@@ -10,7 +10,6 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   @wpa_supplicant_path "/usr/sbin/wpa_supplicant"
   @wpa_control_path "/var/run/wpa_supplicant"
   @wpa_config_file "/tmp/nerves_interim_wpa.conf"
-
   # The current state machine state is called "context" to avoid confusion between server
   # state and state machine state.
   defstruct context: :removed,
@@ -120,15 +119,18 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   # # :bound, :renew, :deconfig, :nak
   def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
     Logger.info "DHCPManager.EventHandler(#{ifname}) udhcpc #{inspect event}"
+    scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
   end
 
-  def handle_info({registry, _, _} = event, %{ifname: ifname} = s)
+  def handle_info({registry, _, ifstate} = event, %{ifname: ifname} = s)
    when registry in [Nerves.NetworkInterface, Nerves.WpaSupplicant] do
     event = handle_event(event)
+    scope(ifname) |> SystemRegistry.update(ifstate)
     Logger.info "#{inspect registry} - WiFiManager(#{ifname}, #{s.context}) got event #{inspect event}"
     s = consume(s.context, event, s)
+    #IO.inspect s, label: "New State"
     {:noreply, s}
   end
 
@@ -153,7 +155,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
       :ok ->
 
         {:ok, status} = Nerves.NetworkInterface.status state.ifname
-        Utils.notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
         state
           |> goto_context(:down)
@@ -174,7 +176,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   end
   defp consume(:retry_add, :retry_ifadded, state) do
     {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
-    Utils.notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
     state
       |> goto_context(:down)
@@ -284,7 +286,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
       :ok -> :ok
       error ->
         Logger.info "WiFiManager(#{state.ifname}, #{state.context}) wpa_supplicant set_network error: #{inspect error}"
-        Utils.notify(Nerves.WpaSupplicant, state.ifname, error, %{ifname: state.ifname})
+        notify(Nerves.WpaSupplicant, state.ifname, error, %{ifname: state.ifname})
     end
 
     %Nerves.InterimWiFi.WiFiManager{state | wpa_pid: pid}

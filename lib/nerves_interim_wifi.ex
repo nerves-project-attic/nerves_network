@@ -42,7 +42,7 @@ defmodule Nerves.InterimWiFi do
   """
   def setup(ifname, settings \\ []) do
     Logger.debug "#{__MODULE__} setup(#{ifname}, #{inspect settings})"
-    Nerves.InterimWiFi.IFSupervisor.setup ifname, settings
+    Nerves.InterimWiFi.Config.put ifname, settings
   end
 
   @doc """
@@ -50,7 +50,7 @@ defmodule Nerves.InterimWiFi do
   """
   def teardown(ifname) do
     Logger.debug "#{__MODULE__} teardown(#{ifname})"
-    Nerves.InterimWiFi.IFSupervisor.teardown ifname
+    Nerves.InterimWiFi.Config.drop ifname
   end
 
   @doc """

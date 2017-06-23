@@ -10,6 +10,7 @@ defmodule Nerves.InterimWiFi.Application do
       supervisor(Registry, [:duplicate, Nerves.Udhcpc]),
       worker(Nerves.InterimWiFi.Resolvconf, ["/tmp/resolv.conf", [name: Nerves.InterimWiFi.Resolvconf]]),
       supervisor(Nerves.InterimWiFi.IFSupervisor, [[name: Nerves.InterimWiFi.IFSupervisor]]),
+      worker(Nerves.InterimWiFi.Config, []),
     ]
 
     opts = [strategy: :rest_for_one, name: Nerves.InterimWiFi.Supervisor]

@@ -1,7 +1,7 @@
 defmodule Nerves.InterimWiFi.DHCPManager do
   use GenServer
   require Logger
-  alias Nerves.InterimWiFi.Utils
+  import Nerves.InterimWiFi.Utils
 
   @moduledoc false
 
@@ -90,15 +90,17 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     :noop
   end
 
-  def handle_info({Nerves.NetworkInterface, _, _} = event, s) do
+  def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
     event = handle_event(event)
+    scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
     Logger.info "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
     {:noreply, s}
   end
 
-  def handle_info({Nerves.Udhcpc, event, info}, s) do
+  def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
     Logger.info "DHCPManager.EventHandler(#{s.ifname}) udhcpc #{inspect event}"
+    scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
   end
@@ -119,7 +121,7 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     case Nerves.NetworkInterface.ifup(state.ifname) do
       :ok ->
         {:ok, status} = Nerves.NetworkInterface.status state.ifname
-        Utils.notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
         state
           |> goto_context(:down)
@@ -139,7 +141,7 @@ defmodule Nerves.InterimWiFi.DHCPManager do
   end
   defp consume(:retry_add, :retry_ifadded, state) do
     {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
-    Utils.notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
     state
       |> goto_context(:down)
@@ -210,4 +212,5 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     :ok = Nerves.InterimWiFi.Resolvconf.clear(Nerves.InterimWiFi.Resolvconf, state.ifname)
     state
   end
+
 end
