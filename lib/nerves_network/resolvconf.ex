@@ -1,4 +1,4 @@
-defmodule Nerves.InterimWiFi.Resolvconf do
+defmodule Nerves.Network.Resolvconf do
   use GenServer
 
   @moduledoc """

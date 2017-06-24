@@ -1,7 +1,7 @@
-defmodule Nerves.InterimWiFi.DHCPManager do
+defmodule Nerves.Network.DHCPManager do
   use GenServer
   require Logger
-  import Nerves.InterimWiFi.Utils
+  import Nerves.Network.Utils
 
   @moduledoc false
 
@@ -10,7 +10,9 @@ defmodule Nerves.InterimWiFi.DHCPManager do
   defstruct context: :removed,
             ifname: nil,
             settings: nil,
-            dhcp_pid: nil
+            dhcp_pid: nil,
+            dhcp_retry_interval: 10_000,
+            dhcp_retry_timer: nil
 
   def start_link(ifname, settings, opts \\ []) do
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
@@ -39,7 +41,7 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     # Register for nerves_network_interface events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
 
-    state = %Nerves.InterimWiFi.DHCPManager{settings: settings, ifname: ifname}
+    state = %Nerves.Network.DHCPManager{settings: settings, ifname: ifname}
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
@@ -105,6 +107,11 @@ defmodule Nerves.InterimWiFi.DHCPManager do
     {:noreply, s}
   end
 
+  def handle_info(:dhcp_retry, s) do
+    s = consume(s.context, :dhcp_retry, s)
+    {:noreply, s}
+  end
+
   def handle_info(event, s) do
     Logger.info "DHCPManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
     {:noreply, s}
@@ -112,7 +119,7 @@ defmodule Nerves.InterimWiFi.DHCPManager do
 
   ## State machine implementation
   defp goto_context(state, newcontext) do
-    %Nerves.InterimWiFi.DHCPManager{state | context: newcontext}
+    %Nerves.Network.DHCPManager{state | context: newcontext}
   end
 
   defp consume(_, :noop, state), do: state
@@ -171,7 +178,14 @@ defmodule Nerves.InterimWiFi.DHCPManager do
       |> configure(info)
       |> goto_context(:up)
   end
-  defp consume(:dhcp, {:leasefail, _info}, state), do: state
+  defp consume(:dhcp, {:leasefail, _info}, state) do
+    dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry)
+    %{state | dhcp_retry_timer: dhcp_retry_timer}
+      |> stop_udhcpc
+      |> start_link_local
+      |> goto_context(:up)
+
+  end
   defp consume(:dhcp, :ifdown, state) do
     state
       |> stop_udhcpc
@@ -180,6 +194,11 @@ defmodule Nerves.InterimWiFi.DHCPManager do
 
   ## Context: :up
   defp consume(:up, :ifup, state), do: state
+  defp consume(:up, :dhcp_retry, state) do
+    state
+      |> start_udhcpc
+      |> goto_context(:dhcp)
+  end
   defp consume(:up, :ifdown, state) do
     state
       |> stop_udhcpc
@@ -189,27 +208,38 @@ defmodule Nerves.InterimWiFi.DHCPManager do
 
   defp stop_udhcpc(state) do
     if is_pid(state.dhcp_pid) do
-      Nerves.InterimWiFi.Udhcpc.stop(state.dhcp_pid)
-      %Nerves.InterimWiFi.DHCPManager{state | dhcp_pid: nil}
+      Nerves.Network.Udhcpc.stop(state.dhcp_pid)
+      %Nerves.Network.DHCPManager{state | dhcp_pid: nil}
     else
       state
     end
   end
   defp start_udhcpc(state) do
-    state = stop_udhcpc(state)
-    {:ok, pid} = Nerves.InterimWiFi.Udhcpc.start_link(state.ifname)
+    state = stop_udhcpc(state) |> IO.inspect
+    {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
     {:ok, _} = Registry.register(Nerves.Udhcpc, state.ifname, [])
-    %Nerves.InterimWiFi.DHCPManager{state | dhcp_pid: pid}
+    %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
+  end
+
+  defp start_link_local(state) do
+    {:ok, ifsettings} = Nerves.NetworkInterface.status(state.ifname)
+    case Map.get(ifsettings, :ipv4_address) do
+      nil ->
+        ip = generate_link_local(ifsettings.mac_address)
+        configure(state, [ipv4_address: ip])
+      _ -> state
+    end
+
   end
 
   defp configure(state, info) do
     :ok = Nerves.NetworkInterface.setup(state.ifname, info)
-    :ok = Nerves.InterimWiFi.Resolvconf.setup(Nerves.InterimWiFi.Resolvconf, state.ifname, info)
+    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
     state
   end
 
   defp deconfigure(state) do
-    :ok = Nerves.InterimWiFi.Resolvconf.clear(Nerves.InterimWiFi.Resolvconf, state.ifname)
+    :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
 

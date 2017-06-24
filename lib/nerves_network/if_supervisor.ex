@@ -1,4 +1,4 @@
-defmodule Nerves.InterimWiFi.IFSupervisor do
+defmodule Nerves.Network.IFSupervisor do
   use Supervisor
 
   @moduledoc false
@@ -60,13 +60,16 @@ defmodule Nerves.InterimWiFi.IFSupervisor do
 
   # Return the appropriate interface manager based on the interface's name
   # and settings
-  defp manager(<<"eth", _rest::binary>>, _settings) do
+  defp manager(<<"e", _rest::binary>>, settings) do
     # If someone tries to use this for a wired Ethernet connection, just do
     # DHCP.
-    Nerves.InterimWiFi.DHCPManager
+    case Keyword.get(settings, :ipv4_address_method) do
+      :static -> Nerves.Network.StaticManager
+      _ -> Nerves.Network.DHCPManager
+    end
   end
   defp manager(_ifname, _settings) do
     # Default is to assume wifi for now.
-    Nerves.InterimWiFi.WiFiManager
+    Nerves.Network.WiFiManager
   end
 end

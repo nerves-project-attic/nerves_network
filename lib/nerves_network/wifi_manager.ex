@@ -1,7 +1,7 @@
-defmodule Nerves.InterimWiFi.WiFiManager do
+defmodule Nerves.Network.WiFiManager do
   use GenServer
   require Logger
-  import Nerves.InterimWiFi.Utils
+  import Nerves.Network.Utils
 
   @moduledoc false
 
@@ -9,7 +9,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   # Nerves, these may be different.
   @wpa_supplicant_path "/usr/sbin/wpa_supplicant"
   @wpa_control_path "/var/run/wpa_supplicant"
-  @wpa_config_file "/tmp/nerves_interim_wpa.conf"
+  @wpa_config_file "/tmp/nerves_network_wpa.conf"
   # The current state machine state is called "context" to avoid confusion between server
   # state and state machine state.
   defstruct context: :removed,
@@ -22,28 +22,15 @@ defmodule Nerves.InterimWiFi.WiFiManager do
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
-  # defmodule EventHandler do
-  #   use GenEvent
-  #
-  #   @moduledoc false
-  #
-  #   def init({manager, ifname}) do
-  #     {:ok, %{manager: manager, ifname: ifname}}
-  #   end
-  #
-  #
-  # end
-
   def init({ifname, settings}) do
     # Make sure that the interface is enabled or nothing will work.
     Logger.info "WiFiManager(#{ifname}) starting"
     Logger.info "Register Nerves.NetworkInterface #{inspect ifname}"
     # Register for nerves_network_interface events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
-    |> IO.inspect
 
     Logger.info "Done Registering"
-    state = %Nerves.InterimWiFi.WiFiManager{settings: settings, ifname: ifname}
+    state = %Nerves.Network.WiFiManager{settings: settings, ifname: ifname}
 
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
@@ -145,7 +132,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
 
   ## State machine implementation
   defp goto_context(state, newcontext) do
-    %Nerves.InterimWiFi.WiFiManager{state | context: newcontext}
+    %Nerves.Network.WiFiManager{state | context: newcontext}
   end
 
   defp consume(_, :noop, state), do: state
@@ -256,7 +243,7 @@ defmodule Nerves.InterimWiFi.WiFiManager do
   defp stop_wpa(state) do
     if is_pid(state.wpa_pid) do
       Nerves.WpaSupplicant.stop(state.wpa_pid)
-      %Nerves.InterimWiFi.WiFiManager{state | wpa_pid: nil}
+      %Nerves.Network.WiFiManager{state | wpa_pid: nil}
     else
       state
     end
@@ -289,40 +276,40 @@ defmodule Nerves.InterimWiFi.WiFiManager do
         notify(Nerves.WpaSupplicant, state.ifname, error, %{ifname: state.ifname})
     end
 
-    %Nerves.InterimWiFi.WiFiManager{state | wpa_pid: pid}
+    %Nerves.Network.WiFiManager{state | wpa_pid: pid}
   end
 
   defp stop_udhcpc(state) do
     if is_pid(state.dhcp_pid) do
-      Nerves.InterimWiFi.Udhcpc.stop(state.dhcp_pid)
-      %Nerves.InterimWiFi.WiFiManager{state | dhcp_pid: nil}
+      Nerves.Network.Udhcpc.stop(state.dhcp_pid)
+      %Nerves.Network.WiFiManager{state | dhcp_pid: nil}
     else
       state
     end
   end
   defp start_udhcpc(state) do
     state = stop_udhcpc(state)
-    {:ok, pid} = Nerves.InterimWiFi.Udhcpc.start_link(state.ifname)
+    {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
     Logger.info "Register Nerves.Udhcpc #{inspect state.ifname}"
     {:ok, _} = Registry.register(Nerves.Udhcpc, state.ifname, [])
-    %Nerves.InterimWiFi.WiFiManager{state | dhcp_pid: pid}
+    %Nerves.Network.WiFiManager{state | dhcp_pid: pid}
   end
 
   defp configure(state, info) do
     :ok = Nerves.NetworkInterface.setup(state.ifname, info)
-    :ok = Nerves.InterimWiFi.Resolvconf.setup(Nerves.InterimWiFi.Resolvconf, state.ifname, info)
+    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
     state
   end
 
   defp deconfigure(state) do
-    :ok = Nerves.InterimWiFi.Resolvconf.clear(Nerves.InterimWiFi.Resolvconf, state.ifname)
+    :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
 
   defp write_wpa_conf() do
     # Get the regulatory domain from the configuration.
     # "00" is the world domain
-    regulatory_domain = Application.get_env(:nerves_interim_wifi, :regulatory_domain, "00")
+    regulatory_domain = Application.get_env(:nerves_network, :regulatory_domain, "00")
     contents = "country=#{regulatory_domain}"
     File.write! @wpa_config_file, contents
   end

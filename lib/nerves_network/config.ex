@@ -1,10 +1,10 @@
-defmodule Nerves.InterimWiFi.Config  do
+defmodule Nerves.Network.Config  do
   use GenServer
 
   require Logger
 
   alias SystemRegistry, as: SR
-  alias Nerves.InterimWiFi.IFSupervisor
+  alias Nerves.Network.IFSupervisor
 
   @scope [:config, :network_interface]
   @priority :nerves_network
@@ -45,7 +45,7 @@ defmodule Nerves.InterimWiFi.Config  do
 
     removed = Enum.map(removed, fn({k, _}) -> {k, %{}} end)
     modified = added ++ modified
-    
+
     Enum.each(modified, fn({iface, settings}) ->
       IFSupervisor.setup(iface, settings)
     end)

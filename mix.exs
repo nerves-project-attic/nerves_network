@@ -1,8 +1,8 @@
-defmodule Nerves.InterimWiFi.Mixfile do
+defmodule Nerves.Network.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :nerves_interim_wifi,
+    [app: :nerves_network,
      version: "0.3.0-dev",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
@@ -21,20 +21,20 @@ defmodule Nerves.InterimWiFi.Mixfile do
   # Type `mix help compile.app` for more information
   def application do
     [extra_applications: [:logger],
-     mod: {Nerves.InterimWiFi.Application, []}]
+     mod: {Nerves.Network.Application, []}]
   end
 
   defp description do
     """
-    Manage WiFi network connections.
+    Manage network connections.
     """
   end
 
   defp package do
     %{files: ["lib", "src/*.[ch]", "test", "mix.exs", "README.md", "LICENSE", "CHANGELOG.md", "Makefile"],
-      maintainers: ["Frank Hunleth"],
+      maintainers: ["Frank Hunleth", "Justin Schneck"],
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/nerves-project/nerves_interim_wifi"}}
+      links: %{"GitHub" => "https://github.com/nerves-project/nerves_network"}}
   end
 
   defp deps do

@@ -1,6 +1,6 @@
-defmodule Nerves.InterimWiFiTest do
+defmodule Nerves.NetworkTest do
   use ExUnit.Case
-  doctest Nerves.InterimWiFi
+  doctest Nerves.Network
 
   test "the truth" do
     assert 1 + 1 == 2

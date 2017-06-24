@@ -1,23 +1,23 @@
-defmodule Nerves.InterimWiFi do
+defmodule Nerves.Network do
   require Logger
 
   @moduledoc """
-  The Nerves.InterimWiFi application handles the low level details of connecting
+  The Nerves.Network application handles the low level details of connecting
   to WiFi networks. To quickly get started, create a new Nerves project and add
   the following line someplace early on in your program:
 
-      Nerves.InterimWiFi.setup "wlan0", ssid: "myssid", key_mgmt: :"WPA-PSK", psk: "secretsecret"
+      Nerves.Network.setup "wlan0", ssid: "myssid", key_mgmt: :"WPA-PSK", psk: "secretsecret"
 
-  When you boot your Nerves image, Nerves.InterimWiFi monitors for an interface
+  When you boot your Nerves image, Nerves.Network monitors for an interface
   called "wlan0" to be created. This occurs when you plug in a USB WiFi dongle.
   If you plug in more than one WiFi dongle, each one will be given a name like
   "wlan1", etc. Those may be setup as well.
 
-  When not connected, Nerves.InterimWiFi continually scans
+  When not connected, Nerves.Network continually scans
   for the desired access point. Once found, it associates and runs DHCP to
   acquire an IP address.
 
-  IMPORTANT: This module is called Nerves.InterimWiFi for a reason. Some
+  IMPORTANT: This module is called Nerves.Network for a reason. Some
   functionality is missing or awaiting refactoring. The largest pending change is to change how events are
   handled, and that mostly affects how things work internally. Externally, the event change
   will allow you to receive notifications of when connections occur or are
@@ -42,7 +42,7 @@ defmodule Nerves.InterimWiFi do
   """
   def setup(ifname, settings \\ []) do
     Logger.debug "#{__MODULE__} setup(#{ifname}, #{inspect settings})"
-    Nerves.InterimWiFi.Config.put ifname, settings
+    Nerves.Network.Config.put ifname, settings
   end
 
   @doc """
@@ -50,21 +50,21 @@ defmodule Nerves.InterimWiFi do
   """
   def teardown(ifname) do
     Logger.debug "#{__MODULE__} teardown(#{ifname})"
-    Nerves.InterimWiFi.Config.drop ifname
+    Nerves.Network.Config.drop ifname
   end
 
   @doc """
   Return a map with the current configuration and interface status.
   """
   def status(ifname) do
-    Nerves.InterimWiFi.IFSupervisor.status ifname
+    Nerves.Network.IFSupervisor.status ifname
   end
 
   @doc """
   If `ifname` is a wireless LAN, scan for access points.
   """
   def scan(ifname) do
-    Nerves.InterimWiFi.IFSupervisor.scan ifname
+    Nerves.Network.IFSupervisor.scan ifname
   end
 
   @doc """
@@ -77,11 +77,11 @@ defmodule Nerves.InterimWiFi do
 
   You may also configure the regulatory domain in your app's `config/config.exs`:
 
-      config :nerves_interim_wifi,
+      config :nerves_network,
         regulatory_domain: "US"
   """
   def set_regulatory_domain(country) do
     Logger.warn "Regulatory domain currently can only be updated on WiFi device addition."
-    Application.put_env(:nerves_interim_wifi, :regulatory_domain, country)
+    Application.put_env(:nerves_network, :regulatory_domain, country)
   end
 end

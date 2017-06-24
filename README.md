@@ -1,31 +1,28 @@
-# Nerves.InterimWiFi
-[![Build Status](https://travis-ci.org/nerves-project/nerves_interim_wifi.svg?branch=master)](https://travis-ci.org/nerves-project/nerves_interim_wifi)
-[![Hex version](https://img.shields.io/hexpm/v/nerves_interim_wifi.svg "Hex version")](https://hex.pm/packages/nerves_interim_wifi)
+# Nerves.Network
+[![Build Status](https://travis-ci.org/nerves-project/nerves_network.svg?branch=master)](https://travis-ci.org/nerves-project/nerves_network)
+[![Hex version](https://img.shields.io/hexpm/v/nerves_network_wifi.svg "Hex version")](https://hex.pm/packages/nerves_network_wifi)
 
-Connect to WiFi networks on Nerves platforms.
+Connect to wired and wireless networks on Nerves platforms.
 
 ## Installation
 
 
-1. Add nerves_interim_wifi to your list of dependencies in `mix.exs`:
-    ``` elixir
-    def deps do
-      [{:nerves_interim_wifi, "~> 0.2.0"}]
-    end
-    ```
-
-2. Set the regulatory domain in your `config.exs`. This should be set to the
+Set the regulatory domain in your `config.exs`. This should be set to the
    ISO 3166-1 alpha-2 country code where the device is running. If your device
-   ships to more than one country, see `Nerves.InterimWiFi.set_regulatory_domain\1`.
+   ships to more than one country, see `Nerves.Network.set_regulatory_domain\1`.
      * if unset, the default regulatory domain is the world domain, "00"
       ``` elixir
-      config :nerves_interim_wifi,
+      config :nerves_network,
         regulatory_domain: "US"
       ```
 
 ## Setup
+
+**Note**
+If you are using `nerves_runtime` >= `0.3.0` the module will be auto loaded by default.
+
 Before WiFi will work, you will need to load any modules for your device if they
-aren't loaded already. Here's an example for Raspberry Pi 0 and Rasbperry Pi 3
+aren't loaded already. Here's an example for Raspberry Pi 0 and Raspberry Pi 3
 
 ``` elixir
 {_, 0} = System.cmd("modprobe", ["brcmfmac"])
@@ -35,8 +32,8 @@ aren't loaded already. Here's an example for Raspberry Pi 0 and Rasbperry Pi 3
 You can scan by running:
 
 ``` elixir
-iex> {:ok, _pid} = Nerves.InterimWiFi.setup "wlan0"
-iex> Nerves.InterimWiFi.scan "wlan0"
+iex> {:ok, _pid} = Nerves.Network.setup "wlan0"
+iex> Nerves.Network.scan "wlan0"
 [%{age: 42, beacon_int: 100, bssid: "00:1f:90:db:45:54", capabilities: 1073,
    flags: "[WEP][ESS]", freq: 2462, id: 8,
    ie: "00053153555434010882848b0c1296182403010b07",
@@ -53,10 +50,10 @@ iex> Nerves.InterimWiFi.scan "wlan0"
 
 ## Running
 
-Setup your WiFi connection by running:
+Setup your network connection by running:
 
 ``` elixir
-Nerves.InterimWiFi.setup "wlan0", ssid: "my_accesspoint_name", key_mgmt: :"WPA-PSK", psk: "secret"
+Nerves.Network.setup "wlan0", ssid: "my_accesspoint_name", key_mgmt: :"WPA-PSK", psk: "secret"
 ```
 
 

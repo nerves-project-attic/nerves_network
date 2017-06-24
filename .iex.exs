@@ -1,12 +1,27 @@
-alias Nerves.InterimWiFi.Config
+alias Nerves.Network.Config
 
-defmodule W do
-  alias Nerves.InterimWiFi.Config
-  def put do
-    Config.put "wlx0013efd02505", %{ssid: "The Internets", psk: "nothingworkshere", key_mgmt: :"WPA-PSK"}
+defmodule Static do
+  def up do
+    Nerves.Network.setup "ens38",
+      ipv4_address_method: :static,
+      ipv4_address: "192.168.1.2",
+      ipv4_subnet_mask: "255.255.255.0",
+      domain: "test",
+      nameservers: ["8.8.8.8", "8.8.4.4"]
   end
 
-  def drop do
-    Config.drop "wlx0013efd02505"
+  def down do
+
+  end
+end
+
+defmodule DHCP do
+  def up do
+    Nerves.Network.setup "ens38",
+      ipv4_address_method: :dhcp
+  end
+
+  def down do
+
   end
 end

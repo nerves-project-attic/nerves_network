@@ -1,6 +1,9 @@
 # Changelog
 
-## v0.2.1-dev
+## v0.3.0
+
+
+## v0.2.1
 
 * Bug Fixes
   * Bumped versions for dependencies

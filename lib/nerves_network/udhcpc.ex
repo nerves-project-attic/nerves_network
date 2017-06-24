@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-defmodule Nerves.InterimWiFi.Udhcpc do
+defmodule Nerves.Network.Udhcpc do
   use GenServer
   require Logger
-  alias Nerves.InterimWiFi.Utils
+  alias Nerves.Network.Utils
 
   @moduledoc """
   This module interacts with `udhcpc` to interact with DHCP servers.
@@ -54,7 +54,7 @@ defmodule Nerves.InterimWiFi.Udhcpc do
   end
 
   def init(ifname) do
-    priv_path = :code.priv_dir(:nerves_interim_wifi)
+    priv_path = :code.priv_dir(:nerves_network)
     port_path = "#{priv_path}/udhcpc_wrapper"
     args = ["udhcpc",
             "--interface", ifname,
