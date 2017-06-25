@@ -17,7 +17,8 @@ defmodule Nerves.Network.IFSupervisor do
   def setup(ifname, settings) do
     pidname = pname(ifname)
     if !Process.whereis(pidname) do
-      child = worker(manager(ifname, settings),
+      manager_module = manager(if_type(ifname), settings)
+      child = worker(manager_module,
                     [ifname, settings, [name: pidname]],
                     id: pidname)
       Supervisor.start_child(__MODULE__, child)
@@ -55,21 +56,33 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   defp pname(ifname) do
-    String.to_atom("Nerves.InterimWifi.Interface." <> ifname)
+    String.to_atom("Nerves.Network.Interface." <> ifname)
   end
 
-  # Return the appropriate interface manager based on the interface's name
+  # Return the appropriate interface manager based on the interface's type
   # and settings
-  defp manager(<<"e", _rest::binary>>, settings) do
-    # If someone tries to use this for a wired Ethernet connection, just do
-    # DHCP.
+  defp manager(:wired, settings) do
     case Keyword.get(settings, :ipv4_address_method) do
       :static -> Nerves.Network.StaticManager
       _ -> Nerves.Network.DHCPManager
     end
   end
-  defp manager(_ifname, _settings) do
-    # Default is to assume wifi for now.
+  defp manager(:wireless, _settings) do
     Nerves.Network.WiFiManager
   end
+
+  # Categorize networks into wired and wireless based on their if names
+  defp if_type(<<"eth", _rest::binary>>), do: :wired
+  defp if_type(<<"usb", _rest::binary>>), do: :wired
+  defp if_type(<<"lo", _rest::binary>>), do: :wired  # Localhost
+  defp if_type(<<"wlan", _rest::binary>>), do: :wireless
+  defp if_type(<<"ra", _rest::binary>>), do: :wireless  # Ralink
+
+  # systemd predictable names
+  defp if_type(<<"en", _rest::binary>>), do: :wired
+  defp if_type(<<"sl", _rest::binary>>), do: :wired # SLIP
+  defp if_type(<<"wl", _rest::binary>>), do: :wireless
+  defp if_type(<<"ww", _rest::binary>>), do: :wired # wwan (not really supported)
+
+  defp if_type(_ifname), do: :wired
 end
