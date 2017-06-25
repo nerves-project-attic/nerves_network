@@ -39,7 +39,6 @@ defmodule Nerves.Network.Config  do
   end
 
   def update(new, old) do
-    Logger.debug "Config Changed"
     {added, removed, modified} =
       changes(new, old)
 
