@@ -35,9 +35,6 @@ defmodule Nerves.Network.DHCPManager do
   # end
 
   def init({ifname, settings}) do
-    # Make sure that the interface is enabled or nothing will work.
-    Logger.info "DHCPManager(#{ifname}) starting"
-
     # Register for nerves_network_interface and udhcpc events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
     {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
@@ -57,18 +54,18 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   def handle_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
-    Logger.info "DHCPManager.EventHandler(#{ifname}) ifadded"
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifadded"
     :ifadded
   end
   # :ifmoved occurs on systems that assign stable names to removable
   # interfaces. I.e. the interface is added under the dynamically chosen
   # name and then quickly renamed to something that is stable across boots.
   def handle_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
-    Logger.info "DHCPManager.EventHandler(#{ifname}) ifadded (moved)"
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifadded (moved)"
     :ifadded
   end
   def handle_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
-    Logger.info "DHCPManager.EventHandler(#{ifname}) ifremoved"
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifremoved"
     :ifremoved
   end
 
@@ -76,11 +73,11 @@ defmodule Nerves.Network.DHCPManager do
   # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
   # :is_lower_up reports whether the interface as associated with an AP
   def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}) do
-    Logger.info "DHCPManager.EventHandler(#{ifname}) ifup"
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifup"
     :ifup
   end
   def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}) do
-    Logger.info "DHCPManager.EventHandler(#{ifname}) ifdown"
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifdown"
     :ifdown
   end
 
@@ -89,7 +86,7 @@ defmodule Nerves.Network.DHCPManager do
 
 
   def handle_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
-    Logger.info "DHCPManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
+    Logger.debug "DHCPManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
     :noop
   end
 
@@ -97,12 +94,12 @@ defmodule Nerves.Network.DHCPManager do
     event = handle_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
-    Logger.info "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
+    Logger.debug "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
     {:noreply, s}
   end
 
   def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
-    Logger.info "DHCPManager.EventHandler(#{s.ifname}) udhcpc #{inspect event}"
+    Logger.debug "DHCPManager.EventHandler(#{s.ifname}) udhcpc #{inspect event}"
     scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
@@ -114,7 +111,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   def handle_info(event, s) do
-    Logger.info "DHCPManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
+    Logger.debug "DHCPManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
     {:noreply, s}
   end
 

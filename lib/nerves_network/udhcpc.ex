@@ -99,36 +99,36 @@ defmodule Nerves.Network.Udhcpc do
   end
 
   defp handle_udhcpc(["deconfig", ifname | _rest], state) do
-    Logger.info "Deconfigure #{ifname}"
+    Logger.debug "udhcpc: deconfigure #{ifname}"
 
     Utils.notify(Nerves.Udhcpc, state.ifname, :deconfig, %{ifname: ifname})
     {:noreply, state}
   end
   defp handle_udhcpc(["bound", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
-    Logger.info "Bound #{ifname}: IP=#{ip}, dns=#{inspect dns}"
+    Logger.debug "udhcpc: bound #{ifname}: IP=#{ip}, dns=#{inspect dns}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
     {:noreply, state}
   end
   defp handle_udhcpc(["renew", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
-    Logger.info "Renew #{ifname}"
+    Logger.debug "udhcpc: renew #{ifname}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
     {:noreply, state}
   end
   defp handle_udhcpc(["leasefail", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
-    Logger.info "#{ifname}: leasefail #{message}"
+    Logger.debug "udhcpc: #{ifname}: leasefail #{message}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :leasefail, %{ifname: ifname, message: message})
     {:noreply, state}
   end
   defp handle_udhcpc(["nak", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
-    Logger.info "#{ifname}: NAK #{message}"
+    Logger.debug "udhcpc: #{ifname}: NAK #{message}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :nak, %{ifname: ifname, message: message})
     {:noreply, state}
   end
-  defp handle_udhcpc(something_else, state) do
-    msg = List.foldl(something_else, "", &<>/2)
-    Logger.info "Got info message: #{msg}"
+  defp handle_udhcpc(_something_else, state) do
+    #msg = List.foldl(something_else, "", &<>/2)
+    #Logger.debug "udhcpc: ignoring unhandled message: #{msg}"
     {:noreply, state}
   end
 
