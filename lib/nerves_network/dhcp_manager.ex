@@ -38,8 +38,9 @@ defmodule Nerves.Network.DHCPManager do
     # Make sure that the interface is enabled or nothing will work.
     Logger.info "DHCPManager(#{ifname}) starting"
 
-    # Register for nerves_network_interface events
+    # Register for nerves_network_interface and udhcpc events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
+    {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
 
     state = %Nerves.Network.DHCPManager{settings: settings, ifname: ifname}
     # If the interface currently exists send ourselves a message that it
@@ -216,9 +217,8 @@ defmodule Nerves.Network.DHCPManager do
     end
   end
   defp start_udhcpc(state) do
-    state = stop_udhcpc(state) |> IO.inspect
+    state = stop_udhcpc(state)
     {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
-    {:ok, _} = Registry.register(Nerves.Udhcpc, state.ifname, [])
     %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
   end
 

@@ -26,8 +26,9 @@ defmodule Nerves.Network.WiFiManager do
     # Make sure that the interface is enabled or nothing will work.
     Logger.info "WiFiManager(#{ifname}) starting"
     Logger.info "Register Nerves.NetworkInterface #{inspect ifname}"
-    # Register for nerves_network_interface events
+    # Register for nerves_network_interface events and udhcpc events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
+    {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
 
     Logger.info "Done Registering"
     state = %Nerves.Network.WiFiManager{settings: settings, ifname: ifname}
@@ -41,6 +42,7 @@ defmodule Nerves.Network.WiFiManager do
       else
         state
       end
+
     {:ok, state}
   end
 
@@ -140,7 +142,6 @@ defmodule Nerves.Network.WiFiManager do
   defp consume(:removed, :ifadded, state) do
     case Nerves.NetworkInterface.ifup(state.ifname) do
       :ok ->
-
         {:ok, status} = Nerves.NetworkInterface.status state.ifname
         notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
@@ -290,8 +291,6 @@ defmodule Nerves.Network.WiFiManager do
   defp start_udhcpc(state) do
     state = stop_udhcpc(state)
     {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
-    Logger.info "Register Nerves.Udhcpc #{inspect state.ifname}"
-    {:ok, _} = Registry.register(Nerves.Udhcpc, state.ifname, [])
     %Nerves.Network.WiFiManager{state | dhcp_pid: pid}
   end
 

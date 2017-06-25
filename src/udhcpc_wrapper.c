@@ -47,11 +47,15 @@ static void process_erlang_request()
     for (i = 0; i < amount; i++) {
         // Each command is a byte.
         switch (buffer[i]) {
-        case 1:
+        case 1: // renew
             kill(child_pid, SIGUSR1);
             break;
-        case 2:
+        case 2: // release
             kill(child_pid, SIGUSR2);
+            break;
+        case 3: // exit
+            kill(child_pid, SIGKILL);
+            exit(EXIT_SUCCESS);
             break;
         default:
             kill(child_pid, SIGKILL);

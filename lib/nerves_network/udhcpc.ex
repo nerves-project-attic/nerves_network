@@ -50,7 +50,6 @@ defmodule Nerves.Network.Udhcpc do
   """
   def stop(pid) do
     GenServer.stop(pid)
-    #GenServer.cast(pid, :stop)
   end
 
   def init(ifname) do
@@ -70,8 +69,8 @@ defmodule Nerves.Network.Udhcpc do
   defp add_hostname_arg(args, name), do: args ++ ["-x", "hostname:#{name}"]
 
   def terminate(_reason, state) do
-    # Closing Erlang ports just turns off I/O. That's not good enough for
-    # udhcpc. It needs to be killed.
+    # Send the command to our wrapper to shut everything down.
+    Port.command(state.port, <<3>>);
     Port.close(state.port)
     :ok
   end
