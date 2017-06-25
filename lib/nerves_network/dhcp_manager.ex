@@ -179,7 +179,7 @@ defmodule Nerves.Network.DHCPManager do
       |> goto_context(:up)
   end
   defp consume(:dhcp, {:leasefail, _info}, state) do
-    dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry)
+    dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
     %{state | dhcp_retry_timer: dhcp_retry_timer}
       |> stop_udhcpc
       |> start_link_local
@@ -205,6 +205,7 @@ defmodule Nerves.Network.DHCPManager do
       |> deconfigure
       |> goto_context(:down)
   end
+  defp consume(:up, {:leasefail, _info}, state), do: state
 
   defp stop_udhcpc(state) do
     if is_pid(state.dhcp_pid) do
