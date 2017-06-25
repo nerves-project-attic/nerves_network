@@ -141,6 +141,7 @@ defmodule Nerves.Network.DHCPManager do
     end
   end
   defp consume(:removed, :retry_ifadded, state), do: state
+  defp consume(:removed, :ifdown, state), do: state
 
   ## Context: :retry_add
   defp consume(:retry_add, :ifremoved, state) do
@@ -156,6 +157,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   ## Context: :down
+  defp consume(:down, :ifadded, state), do: state
   defp consume(:down, :ifup, state) do
     state
       |> start_udhcpc
