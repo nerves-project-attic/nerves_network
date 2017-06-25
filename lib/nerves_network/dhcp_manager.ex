@@ -11,7 +11,7 @@ defmodule Nerves.Network.DHCPManager do
             ifname: nil,
             settings: nil,
             dhcp_pid: nil,
-            dhcp_retry_interval: 10_000,
+            dhcp_retry_interval: 60_000,
             dhcp_retry_timer: nil
 
   def start_link(ifname, settings, opts \\ []) do
