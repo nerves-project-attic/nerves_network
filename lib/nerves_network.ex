@@ -30,7 +30,7 @@ defmodule Nerves.Network do
   Configure the specified interface. Settings contains one or more of the
   following:
 
-    * `:ipv4_address_method` - `:dhcp` or `:static`
+    * `:ipv4_address_method` - `:dhcp`, `:static`, or `:linklocal`
     * `:ipv4_address` - e.g., "192.168.1.5" (specify when :ipv4_address_method = :static)
     * `:ipv4_subnet_mask` - e.g., "255.255.255.0" (specify when :ipv4_address_method = :static)
     * `:domain` - e.g., "mycompany.com" (specify when :ipv4_address_method = :static)

@@ -64,7 +64,8 @@ defmodule Nerves.Network.IFSupervisor do
   defp manager(:wired, settings) do
     case Keyword.get(settings, :ipv4_address_method) do
       :static -> Nerves.Network.StaticManager
-      _ -> Nerves.Network.DHCPManager
+      :linklocal -> Nerves.Network.LinkLocalManager
+      :dhcp -> Nerves.Network.DHCPManager
     end
   end
   defp manager(:wireless, _settings) do
