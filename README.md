@@ -4,22 +4,25 @@
 
 Connect to wired and wireless networks on Nerves platforms.
 
+# WiFi Networking
+
 ## Installation
 
+You'll first need to set the regulatory domain in your `config.exs` to your ISO
+3166-1 alpha-2 country code. In theory this is optional, but you'll get the
+world regulatory domain ("00") which is the most restrictive. This may cause
+troubles when you try to connect to an access point.
 
-Set the regulatory domain in your `config.exs`. This should be set to the
-   ISO 3166-1 alpha-2 country code where the device is running. If your device
-   ships to more than one country, see `Nerves.Network.set_regulatory_domain\1`.
-     * if unset, the default regulatory domain is the world domain, "00"
-      ``` elixir
-      config :nerves_network,
-        regulatory_domain: "US"
-      ```
+```elixir
+config :nerves_network,
+  regulatory_domain: "US"
+```
 
 ## Setup
 
 **Note**
-If you are using `nerves_runtime` >= `0.3.0` the module will be auto loaded by default.
+If you are using `nerves_runtime` >= `0.3.0` the kernel module will be auto
+loaded by default.
 
 Before WiFi will work, you will need to load any modules for your device if they
 aren't loaded already. Here's an example for Raspberry Pi 0 and Raspberry Pi 3
@@ -29,9 +32,10 @@ aren't loaded already. Here's an example for Raspberry Pi 0 and Raspberry Pi 3
 ```
 
 ## Scanning
+
 You can scan by running:
 
-``` elixir
+```elixir
 iex> {:ok, _pid} = Nerves.Network.setup "wlan0"
 iex> Nerves.Network.scan "wlan0"
 [%{age: 42, beacon_int: 100, bssid: "00:1f:90:db:45:54", capabilities: 1073,
@@ -52,14 +56,31 @@ iex> Nerves.Network.scan "wlan0"
 
 Setup your network connection by running:
 
-``` elixir
+```elixir
 Nerves.Network.setup "wlan0", ssid: "my_accesspoint_name", key_mgmt: :"WPA-PSK", psk: "secret"
 ```
-
 
 If your WiFi network does not use a secret key, specify the `key_mgmt` to be `:NONE`.
 Currently, wireless configuration passes almost unaltered to [wpa_supplicant.ex](https://github.com/nerves-project/nerves_wpa_supplicant), so see that
 project for more configuration options.
+
+# Wired Networking
+
+Wired networking setup varies in how IP addresses are expected to be assigned.
+The following examples show some common setups:
+
+```elixir
+# Configure a network that supplies IP addresses via DHCP
+Nerves.Network.setup "eth0", ipv4_address_method: :dhcp
+
+# Statically assign an address
+Nerves.Network.setup "eth0", ipv4_address_method: :static,
+    ipv4_address: "10.0.0.2", ipv4_subnet_mask: "255.255.0.0",
+    domain: "mycompany.com", nameservers: ["8.8.8.8", "8.8.4.4"]
+
+# Assign a link-local address
+Nerves.Network.setup "usb0", ipv4_address_method: :linklocal
+```
 
 ## Limitations
 
