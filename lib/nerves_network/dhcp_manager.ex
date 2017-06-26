@@ -223,13 +223,11 @@ defmodule Nerves.Network.DHCPManager do
 
   defp start_link_local(state) do
     {:ok, ifsettings} = Nerves.NetworkInterface.status(state.ifname)
-    case Map.get(ifsettings, :ipv4_address) do
-      nil ->
-        ip = generate_link_local(ifsettings.mac_address)
-        configure(state, [ipv4_address: ip])
-      _ -> state
-    end
-
+    ip = generate_link_local(ifsettings.mac_address)
+    scope(state.ifname)
+    |> SystemRegistry.update(%{ipv4_address: ip})
+    :ok = Nerves.NetworkInterface.setup(state.ifname, [ipv4_address: ip])
+    state
   end
 
   defp configure(state, info) do

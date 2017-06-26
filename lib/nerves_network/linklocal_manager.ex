@@ -137,6 +137,8 @@ defmodule Nerves.Network.LinkLocalManager do
   defp start_link_local(state) do
     {:ok, ifsettings} = Nerves.NetworkInterface.status(state.ifname)
     ip = generate_link_local(ifsettings.mac_address)
+    scope(state.ifname)
+    |> SystemRegistry.update(%{ipv4_address: ip})
     :ok = Nerves.NetworkInterface.setup(state.ifname, [ipv4_address: ip])
     state
   end
