@@ -101,16 +101,18 @@ defmodule Nerves.Network.LinkLocalManager do
   end
   defp consume(:removed, :retry_ifadded, state), do: state
   defp consume(:removed, :ifdown, state), do: state
+  defp consume(:removed, :ifremoved, state), do: state
 
   ## Context: :retry_add
-  defp consume(:retry_add, :ifremoved, state) do
-    goto_context(state, :removed)
-  end
+  defp consume(:retry_add, :ifadded, state), do: state
   defp consume(:retry_add, :retry_ifadded, state) do
     {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
     notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
     goto_context(state, :down)
+  end
+  defp consume(:retry_add, :ifremoved, state) do
+    goto_context(state, :removed)
   end
 
   ## Context: :down
@@ -126,6 +128,7 @@ defmodule Nerves.Network.LinkLocalManager do
   end
 
   ## Context: :up
+  defp consume(:up, :ifadded, state), do: state
   defp consume(:up, :ifup, state), do: state
   defp consume(:up, :ifdown, state) do
     goto_context(state, :down)
