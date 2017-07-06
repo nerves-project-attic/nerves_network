@@ -25,6 +25,13 @@ defmodule Nerves.Network.Config  do
 
   def init([]) do
     SR.register
+    defaults =
+      Application.get_env(:nerves_network, :default, [])
+    Enum.each(defaults, fn({iface, config}) ->
+      iface
+      |> to_string()
+      |> put(config)
+    end)
     {:ok, %{}}
   end
 
