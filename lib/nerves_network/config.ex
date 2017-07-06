@@ -13,14 +13,14 @@ defmodule Nerves.Network.Config  do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def put(iface, config) do
+  def put(iface, config, priority \\ @priority) do
     scope(iface)
-    |> SR.update(config, priority: @priority)
+    |> SR.update(config, priority: priority)
   end
 
-  def drop(iface) do
+  def drop(iface, priority \\ @priority) do
     scope(iface)
-    |> SR.delete(priority: @priority)
+    |> SR.delete(priority: priority)
   end
 
   def init([]) do
@@ -30,7 +30,7 @@ defmodule Nerves.Network.Config  do
     Enum.each(defaults, fn({iface, config}) ->
       iface
       |> to_string()
-      |> put(config)
+      |> put(config, :default)
     end)
     {:ok, %{}}
   end
