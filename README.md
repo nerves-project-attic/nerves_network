@@ -82,6 +82,35 @@ Nerves.Network.setup "eth0", ipv4_address_method: :static,
 Nerves.Network.setup "usb0", ipv4_address_method: :linklocal
 ```
 
+# Configuring Defaults
+
+`nerves_netowrk` has the ability of setting a default configuration by passing
+setting them in the application configuration. This can be helpful when using
+`nerves_network` with [bootloader](https://github.com/nerves-project/bootloader).
+
+Configuring `bootloader` to start `nerves_network`:
+```elixir
+config :bootloader,
+  init: [:nerves_network],
+  app: :your_app
+```
+
+The following example will pull wifi network information from the system
+environment variables and configure ethernet to use DHCP:
+```elixir
+key_mgmt = System.get_env("NERVES_NETWORK_KEY_MGMT") || "WPA-PSK"
+
+config :nerves_network, :default,
+  wlan0: [
+    ssid: System.get_env("NERVES_NETWORK_SSID"),
+    psk: System.get_env("NERVES_NETWORK_PSK"),
+    key_mgmt: String.to_atom(key_mgmt)
+  ],
+  eth0: [
+    ipv4_address_method: :dhcp
+  ]
+```
+
 ## Limitations
 
 Currently, only IPv4 is supported, and IP addresses can only be assigned via
