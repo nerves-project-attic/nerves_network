@@ -60,9 +60,10 @@ Setup your network connection by running:
 Nerves.Network.setup "wlan0", ssid: "my_accesspoint_name", key_mgmt: :"WPA-PSK", psk: "secret"
 ```
 
-If your WiFi network does not use a secret key, specify the `key_mgmt` to be `:NONE`.
-Currently, wireless configuration passes almost unaltered to [wpa_supplicant.ex](https://github.com/nerves-project/nerves_wpa_supplicant), so see that
-project for more configuration options.
+If your WiFi network does not use a secret key, specify the `key_mgmt` to be
+`:NONE`. Currently, wireless configuration passes almost unaltered to
+[wpa_supplicant.ex](https://github.com/nerves-project/nerves_wpa_supplicant), so
+see that project for more configuration options.
 
 # Wired Networking
 
@@ -84,19 +85,21 @@ Nerves.Network.setup "usb0", ipv4_address_method: :linklocal
 
 # Configuring Defaults
 
-`nerves_netowrk` has the ability of setting a default configuration by passing
-setting them in the application configuration. This can be helpful when using
-`nerves_network` with [bootloader](https://github.com/nerves-project/bootloader).
+`nerves_network` allows default network interface settings to be set using
+application configuration. This can be helpful when using `nerves_network` with
+[`bootloader`](https://github.com/nerves-project/bootloader).  
 
 Configuring `bootloader` to start `nerves_network`:
+
 ```elixir
 config :bootloader,
   init: [:nerves_network],
   app: :your_app
 ```
 
-The following example will pull wifi network information from the system
-environment variables and configure ethernet to use DHCP:
+The following example will pull WiFi network settings from the system
+environment variables and configure the interface's IP address using DHCP:  
+
 ```elixir
 key_mgmt = System.get_env("NERVES_NETWORK_KEY_MGMT") || "WPA-PSK"
 
@@ -113,8 +116,7 @@ config :nerves_network, :default,
 
 ## Limitations
 
-Currently, only IPv4 is supported, and IP addresses can only be assigned via
-DHCP. The library is incredibly verbose in its logging to help debug issues
-on new platforms in prep for a first release. This will change. The library
-is mostly interim in its structure. Please consider submitting PRs and helping
-make this work reliably across embedded devices.
+Currently, only IPv4 is supported. The library is incredibly verbose in its
+logging to help debug issues on new platforms in prep for a first release. This
+will change. The library is mostly interim in its structure. Please consider
+submitting PRs and helping make this work reliably across embedded devices.
