@@ -58,15 +58,12 @@ defmodule Nerves.Network.Udhcpc do
     args = ["udhcpc",
             "--interface", ifname,
             "--script", port_path,
-            "--foreground"]
-          |> add_hostname_arg(hostname())
+            "--foreground",
+            "-x", "hostname:#{hostname()}"]
     port = Port.open({:spawn_executable, port_path},
                      [{:args, args}, :exit_status, :stderr_to_stdout, {:line, 256}])
     {:ok, %{ifname: ifname, port: port}}
   end
-
-  defp add_hostname_arg(args, "noname"), do: args
-  defp add_hostname_arg(args, name), do: args ++ ["-x", "hostname:#{name}"]
 
   def terminate(_reason, state) do
     # Send the command to our wrapper to shut everything down.
@@ -133,11 +130,8 @@ defmodule Nerves.Network.Udhcpc do
   end
 
   defp hostname() do
-    # Turn :sname@host into a hostname
-    # Returns "nohost" if Erlang distribution not enabled
-    node()
-      |> to_string
-      |> String.split("@")
-      |> Enum.at(1)
+    {:ok, hostname} = :inet.gethostname()
+    to_string(hostname)
+    |> String.strip
   end
 end
