@@ -58,14 +58,12 @@ defmodule Nerves.Network.Udhcpc do
     args = ["udhcpc",
             "--interface", ifname,
             "--script", port_path,
-            "--foreground"]
-          |> add_hostname_arg(hostname())
+            "--foreground",
+            "-x", "hostname:#{hostname()}"]
     port = Port.open({:spawn_executable, port_path},
                      [{:args, args}, :exit_status, :stderr_to_stdout, {:line, 256}])
     {:ok, %{ifname: ifname, port: port}}
   end
-
-  defp add_hostname_arg(args, name), do: args ++ ["-x", "hostname:#{name}"]
 
   def terminate(_reason, state) do
     # Send the command to our wrapper to shut everything down.
