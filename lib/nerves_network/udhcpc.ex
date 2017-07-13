@@ -133,11 +133,8 @@ defmodule Nerves.Network.Udhcpc do
   end
 
   defp hostname() do
-    # Turn :sname@host into a hostname
-    # Returns "nohost" if Erlang distribution not enabled
-    node()
-      |> to_string
-      |> String.split("@")
-      |> Enum.at(1)
+    {:ok, hostname} = :inet.gethostname()
+    to_string(hostname)
+    |> String.strip
   end
 end
