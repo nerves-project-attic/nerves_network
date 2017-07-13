@@ -65,7 +65,6 @@ defmodule Nerves.Network.Udhcpc do
     {:ok, %{ifname: ifname, port: port}}
   end
 
-  defp add_hostname_arg(args, "noname"), do: args
   defp add_hostname_arg(args, name), do: args ++ ["-x", "hostname:#{name}"]
 
   def terminate(_reason, state) do
