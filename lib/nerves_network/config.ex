@@ -50,7 +50,7 @@ defmodule Nerves.Network.Config  do
       changes(new, old)
 
     removed = Enum.map(removed, fn({k, _}) -> {k, %{}} end)
-    modified = added ++ modified
+    modified = Enum.reject(added ++ modified, fn {_, v} -> is_nil(v) end)
 
     Enum.each(modified, fn({iface, settings}) ->
       IFSupervisor.setup(iface, settings)
