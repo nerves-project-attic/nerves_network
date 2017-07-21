@@ -207,6 +207,12 @@ defmodule Nerves.Network.DHCPManager do
   end
   defp consume(:up, {:leasefail, _info}, state), do: state
 
+  # Catch-all handler for consume
+  defp consume(context, event, state) do
+    Logger.warn "Unhandled event #{event} for context #{context} in consume/3."
+    state
+  end
+
   defp stop_udhcpc(state) do
     if is_pid(state.dhcp_pid) do
       Nerves.Network.Udhcpc.stop(state.dhcp_pid)
