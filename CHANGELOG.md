@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.1
+  * Bug Fixes
+    * Catch all unspecified context switches and safely return in DHCP_Manager
+
+
 ## v0.3.0
   * Enhancements
     * Replaced Registry with SystemRegistry
