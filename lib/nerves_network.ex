@@ -16,14 +16,6 @@ defmodule Nerves.Network do
   When not connected, Nerves.Network continually scans
   for the desired access point. Once found, it associates and runs DHCP to
   acquire an IP address.
-
-  IMPORTANT: This module is called Nerves.Network for a reason. Some
-  functionality is missing or awaiting refactoring. The largest pending change is to change how events are
-  handled, and that mostly affects how things work internally. Externally, the event change
-  will allow you to receive notifications of when connections occur or are
-  broken. This doesn't mean that it's
-  unusable, though. If you have fixes that make this work better for your setup, please
-  consider sharing them.
   """
 
   @doc """
