@@ -1,18 +1,22 @@
 # Changelog
 
 ## v0.3.1
+
+This is the initial nerves_network release after the nerves_interim_wifi rename.
+
   * Bug Fixes
     * Catch all unspecified context switches and safely return in DHCP_Manager
 
-
 ## v0.3.0
+
   * Enhancements
     * Replaced Registry with SystemRegistry
     * Allow default configuration to be set in the application config
     * Lengthened the DHCP retry interval to 60 seconds
     * Added Link Local support
     * Pass udhcpc the hostname from :inet.gethostname/0 instead of deriving it from the node name
-  * Bug Fixes
+
+  * Bug fixes
     * Updated DHCP state machine to handle edge cases causing a crash.
     * Fixed issue with udhcpc producing zombies
 
