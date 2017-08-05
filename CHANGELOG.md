@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.2
+
+  * Enhancements
+    * Support compilation on OSX. It won't work, but it's good enough for
+      generating docs and pushing to hex.
+
 ## v0.3.1
 
 This is the initial nerves_network release after the nerves_interim_wifi rename.
