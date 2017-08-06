@@ -132,6 +132,6 @@ defmodule Nerves.Network.Udhcpc do
   defp hostname() do
     {:ok, hostname} = :inet.gethostname()
     to_string(hostname)
-    |> String.strip
+    |> String.trim
   end
 end
