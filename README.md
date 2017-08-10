@@ -15,15 +15,6 @@ def deps(target) do
   ]
 ```
 
-Also add it to your application:
-
-```elixir
-def application(_target) do
-  [mod: {MyApplication, []},
-  extra_applications: [:nerves_network]]
-end
-```
-
 # WiFi Networking
 
 ## Installation
