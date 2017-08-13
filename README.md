@@ -4,6 +4,17 @@
 
 Connect to wired and wireless networks on Nerves platforms.
 
+# General Installation (WiFi and Wired)
+
+In your firmware's `mix.exs`, add `nerves_network` to your deps for your system target:
+
+```elixir
+def deps(target) do
+  [ system(target),
+    {:nerves_network, "~> 0.3"}
+  ]
+```
+
 # WiFi Networking
 
 ## Installation
@@ -22,13 +33,31 @@ config :nerves_network,
 
 **Note**
 If you are using `nerves_runtime` >= `0.3.0` the kernel module will be auto
-loaded by default.
+loaded by default, and this step is not necessary.
 
 Before WiFi will work, you will need to load any modules for your device if they
-aren't loaded already. Here's an example for Raspberry Pi 0 and Raspberry Pi 3
+aren't loaded already. Here's an example for Raspberry Pi 0 and Raspberry Pi 3:
 
 ``` elixir
-{_, 0} = System.cmd("modprobe", ["brcmfmac"])
+defmodule MyApplication do
+  use Application
+
+  def start(_type, _args) do
+    import Supervisor.Spec, warn: false
+
+    children = [
+      worker(Task, [fn -> init_kernel_modules() end], restart: :transient, id: Nerves.Init.KernelModules)
+    ]
+
+    opts = [strategy: :one_for_one, name: MyApplication.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+
+  def init_kernel_modules() do
+    {_, 0} = System.cmd("modprobe", ["brcmfmac"])
+  end
+end
+
 ```
 
 ## Scanning
@@ -65,6 +94,9 @@ If your WiFi network does not use a secret key, specify the `key_mgmt` to be
 [wpa_supplicant.ex](https://github.com/nerves-project/nerves_wpa_supplicant), so
 see that project for more configuration options.
 
+**Note**
+`Nerves.Network.setup` stores your interface's configuration information with [`SystemRegistry`](https://github.com/nerves-project/system_registry), which ties the configuration to the calling process. As such, if the process that called `setup` terminates, the network interface will lose its configuration information and be torn down. You can avoid this by calling `setup` in your application's `start` function, or by configuring `nerves_network` using bootloader as described below.
+
 # Wired Networking
 
 Wired networking setup varies in how IP addresses are expected to be assigned.
@@ -87,7 +119,7 @@ Nerves.Network.setup "usb0", ipv4_address_method: :linklocal
 
 `nerves_network` allows default network interface settings to be set using
 application configuration. This can be helpful when using `nerves_network` with
-[`bootloader`](https://github.com/nerves-project/bootloader).  
+[`bootloader`](https://github.com/nerves-project/bootloader).
 
 Configuring `bootloader` to start `nerves_network`:
 
@@ -98,7 +130,7 @@ config :bootloader,
 ```
 
 The following example will pull WiFi network settings from the system
-environment variables and configure the interface's IP address using DHCP:  
+environment variables and configure the interface's IP address using DHCP:
 
 ```elixir
 key_mgmt = System.get_env("NERVES_NETWORK_KEY_MGMT") || "WPA-PSK"
