@@ -65,6 +65,12 @@ If your WiFi network does not use a secret key, specify the `key_mgmt` to be
 [wpa_supplicant.ex](https://github.com/nerves-project/nerves_wpa_supplicant), so
 see that project for more configuration options.
 
+Note: If you call `Nerves.Network.setup` from within your application, place it
+in the main application `start` or another process with the same lifecycle as
+your application. If you call `setup` inside a Task or other process that exits,
+the configuration will be removed from the `SystemRegistry` and the interface
+will no longer be managed by `Nerves.Network`.
+
 # Wired Networking
 
 Wired networking setup varies in how IP addresses are expected to be assigned.
