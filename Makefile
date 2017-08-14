@@ -1,6 +1,6 @@
 # Variables to override
 #
-# CC            C compiler
+# CC            C compiler. MUST be set if crosscompiling
 # CROSSCOMPILE	crosscompiler prefix, if any
 # CFLAGS        compiler flags for compiling all C files
 # LDFLAGS       linker flags for linking all binaries
@@ -26,7 +26,6 @@ DEFAULT_TARGETS ?= priv priv/udhcpc_wrapper
 LDFLAGS +=
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
 CFLAGS += -std=c99
-CC ?= $(CROSSCOMPILE)-gcc
 
 # If not cross-compiling, then run sudo by default
 ifeq ($(origin CROSSCOMPILE), undefined)
