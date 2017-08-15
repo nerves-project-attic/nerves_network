@@ -46,15 +46,6 @@ defmodule Nerves.Network.IFSupervisor do
      end
   end
 
-  def status(ifname) do
-     pidname = pname(ifname)
-     if Process.whereis(pidname) do
-       Nerves.NetworkInterface.status(ifname)
-     else
-       {:error, :not_started}
-     end
-  end
-
   defp pname(ifname) do
     String.to_atom("Nerves.Network.Interface." <> ifname)
   end

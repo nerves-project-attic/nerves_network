@@ -46,10 +46,12 @@ defmodule Nerves.Network do
   end
 
   @doc """
-  Return a map with the current configuration and interface status.
+  Convenience function for returning the current status of a network interface
+  from SystemRegistry.
   """
   def status(ifname) do
-    Nerves.Network.IFSupervisor.status ifname
+    SystemRegistry.match(:_)
+    |> get_in([:state, :network_interface, ifname])
   end
 
   @doc """
