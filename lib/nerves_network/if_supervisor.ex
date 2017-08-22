@@ -57,6 +57,9 @@ defmodule Nerves.Network.IFSupervisor do
       :static -> Nerves.Network.StaticManager
       :linklocal -> Nerves.Network.LinkLocalManager
       :dhcp -> Nerves.Network.DHCPManager
+
+      # Default to DHCP if unset; crash if anything else.
+      nil -> Nerves.Network.DHCPManager
     end
   end
   defp manager(:wireless, _settings) do
