@@ -13,11 +13,19 @@ def deps(target) do
   [ system(target),
     {:nerves_network, "~> 0.3"}
   ]
+end
+
+# Add nerves_network to your `extra_applications`
+def application(_target) do
+  [
+    extra_applications: [:logger, :nerves_network],
+  ]
+end
 ```
 
 # WiFi Networking
 
-## Installation
+## Installation & Setup
 
 You'll first need to set the regulatory domain in your `config.exs` to your ISO
 3166-1 alpha-2 country code. In theory this is optional, but you'll get the
@@ -29,36 +37,21 @@ config :nerves_network,
   regulatory_domain: "US"
 ```
 
-## Setup
+The easiest way to get up and running is by statically setting your WiFi (and possibly ethernet) configuration in `config.exs`:
 
-**Note**
-If you are using `nerves_runtime` >= `0.3.0` the kernel module will be auto
-loaded by default, and this step is not necessary.
-
-Before WiFi will work, you will need to load any modules for your device if they
-aren't loaded already. Here's an example for Raspberry Pi 0 and Raspberry Pi 3:
-
-``` elixir
-defmodule MyApplication do
-  use Application
-
-  def start(_type, _args) do
-    import Supervisor.Spec, warn: false
-
-    children = [
-      worker(Task, [fn -> init_kernel_modules() end], restart: :transient, id: Nerves.Init.KernelModules)
-    ]
-
-    opts = [strategy: :one_for_one, name: MyApplication.Supervisor]
-    Supervisor.start_link(children, opts)
-  end
-
-  def init_kernel_modules() do
-    {_, 0} = System.cmd("modprobe", ["brcmfmac"])
-  end
-end
-
+```elixir
+config :nerves_network, :default,
+  wlan0: [
+    ssid: System.get_env("NERVES_NETWORK_SSID"),
+    psk: System.get_env("NERVES_NETWORK_PSK"),
+    key_mgmt: String.to_atom(key_mgmt)
+  ],
+  eth0: [
+    ipv4_address_method: :dhcp
+  ]
 ```
+
+If you are using an older version (`< 0.3.0`) of `nerves_runtime` then you'll need to do some additional setup to load the correct kernel module for WiFi. See [this page](OLD_NERVES_RUNTIME.md) for more information.
 
 ## Scanning
 
@@ -81,7 +74,7 @@ iex> Nerves.Network.scan "wlan0"
    level: -43, noise: 0, qual: 0, ssid: "dlink", tsf: 580587711245}]
 ```
 
-## Running
+## Runtime WiFi network setup
 
 Setup your network connection by running:
 
@@ -115,35 +108,14 @@ Nerves.Network.setup "eth0", ipv4_address_method: :static,
 Nerves.Network.setup "usb0", ipv4_address_method: :linklocal
 ```
 
-# Configuring Defaults
+# Using `nerves_network` with `bootloader`
 
-`nerves_network` allows default network interface settings to be set using
-application configuration. This can be helpful when using `nerves_network` with
-[`bootloader`](https://github.com/nerves-project/bootloader).
-
-Configuring `bootloader` to start `nerves_network`:
+Set default network interface settings as described above. Then you can use [`bootloader`](https://github.com/nerves-project/bootloader) to start `nerves_network`:
 
 ```elixir
 config :bootloader,
   init: [:nerves_network],
   app: :your_app
-```
-
-The following example will pull WiFi network settings from the system
-environment variables and configure the interface's IP address using DHCP:
-
-```elixir
-key_mgmt = System.get_env("NERVES_NETWORK_KEY_MGMT") || "WPA-PSK"
-
-config :nerves_network, :default,
-  wlan0: [
-    ssid: System.get_env("NERVES_NETWORK_SSID"),
-    psk: System.get_env("NERVES_NETWORK_PSK"),
-    key_mgmt: String.to_atom(key_mgmt)
-  ],
-  eth0: [
-    ipv4_address_method: :dhcp
-  ]
 ```
 
 ## Limitations
