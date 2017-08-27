@@ -1,6 +1,15 @@
 # Changelog
 
+## v0.3.4
+
+  * Enhancements
+    * Make `:dhcp` the default `ipv4_address_method` when unspecified.
+    * Return interface status from SystemRegistry instead of querying
+      `nerves_network_interface`. This ensures that all fields are returned.
+    * Various documentation improvements
+
 ## v0.3.3
+
   * Enhancements
     * Fix deprecation warnings for Elixir 1.5
 
