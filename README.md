@@ -18,7 +18,7 @@ end
 
 # WiFi Networking
 
-## Installation & Setup
+## Installation and Setup
 
 You'll first need to set the regulatory domain in your `config.exs` to your ISO
 3166-1 alpha-2 country code. In theory this is optional, but you'll get the

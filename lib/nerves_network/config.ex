@@ -1,4 +1,6 @@
 defmodule Nerves.Network.Config  do
+  @moduledoc false
+
   use GenServer
 
   require Logger
