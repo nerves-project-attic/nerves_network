@@ -47,26 +47,26 @@ defmodule Nerves.Network.StaticManager do
   end
 
   def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
-    event = handle_network_interface_event(event)
+    event = handle_registry_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
     Logger.info "StaticManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
     {:noreply, s}
   end
 
-  @spec handle_network_interface_event({Nerves.NetworkInterface, Types.ifevent, %{ifname: Types.ifname}}) :: Types.ifevent
-  def handle_network_interface_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
+  @spec handle_registry_event({Nerves.NetworkInterface, atom, %{ifname: Types.ifname, is_lower_up: boolean}}) :: Types.ifevent
+  defp handle_registry_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
     Logger.info "StaticManager(#{ifname}) network_interface ifadded"
     :ifadded
   end
   # :ifmoved occurs on systems that assign stable names to removable
   # interfaces. I.e. the interface is added under the dynamically chosen
   # name and then quickly renamed to something that is stable across boots.
-  def handle_network_interface_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
+  defp handle_registry_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
     Logger.info "StaticManager(#{ifname}) network_interface ifadded (moved)"
     :ifadded
   end
-  def handle_network_interface_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
+  defp handle_registry_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
     Logger.info "StaticManager(#{ifname}) network_interface ifremoved"
     :ifremoved
   end
@@ -74,16 +74,16 @@ defmodule Nerves.Network.StaticManager do
   # Filter out ifup and ifdown events
   # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
   # :is_lower_up reports whether the interface as associated with an AP
-  def handle_network_interface_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}) do
+  defp handle_registry_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}) do
     Logger.info "StaticManager(#{ifname}) network_interface ifup"
     :ifup
   end
-  def handle_network_interface_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}) do
+  defp handle_registry_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}) do
     Logger.info "StaticManager(#{ifname}) network_interface ifdown"
     :ifdown
   end
 
-  def handle_network_interface_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
+  defp handle_registry_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
     Logger.info "StaticManager(#{ifname}): network_interface ignoring event: #{inspect event}"
     :noop
   end
