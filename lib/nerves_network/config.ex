@@ -6,7 +6,7 @@ defmodule Nerves.Network.Config  do
   require Logger
 
   alias SystemRegistry, as: SR
-  alias Nerves.Network.IFSupervisor
+  alias Nerves.Network.{IFSupervisor, Types}
 
   @scope [:config, :network_interface]
   @priority :nerves_network
@@ -15,9 +15,10 @@ defmodule Nerves.Network.Config  do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  @spec put(Types.ifname, Nerves.Network.setup_settings, atom) :: {:ok, {old :: map, new ::map}}
   def put(iface, config, priority \\ @priority) do
     scope(iface)
-    |> SR.update(config, priority: priority)
+    |> SR.update(config, [priority: priority])
   end
 
   def drop(iface, priority \\ @priority) do
@@ -64,6 +65,7 @@ defmodule Nerves.Network.Config  do
     new
   end
 
+  @spec scope(Types.ifname, append :: SR.scope) :: SR.scope
   defp scope(iface, append \\ []) do
     @scope ++ [iface | append]
   end
