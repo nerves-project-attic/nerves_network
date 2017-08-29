@@ -1,5 +1,5 @@
 defmodule Nerves.Network.StaticManager do
-  @moduledoc "Handles static ip address settings."
+  @moduledoc false
 
   use GenServer
   import Nerves.Network.Utils
