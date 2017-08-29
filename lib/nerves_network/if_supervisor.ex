@@ -10,13 +10,14 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   def init([]) do
-      {:ok, {{:one_for_one, 10, 3600}, []}}
+    {:ok, {{:one_for_one, 10, 3600}, []}}
   end
 
   @spec setup(Types.ifname | atom, Nerves.Network.setup_settings) :: Supervisor.on_start_child()
   def setup(ifname, settings) when is_atom(ifname) do
     setup(to_string(ifname), settings)
   end
+
   def setup(ifname, settings) do
     pidname = pname(ifname)
     if !Process.whereis(pidname) do
@@ -41,14 +42,20 @@ defmodule Nerves.Network.IFSupervisor do
     end
   end
 
-  @spec scan(Types.ifname) :: [String.t] | {:error, any}
-  def scan(ifname) do
-     pidname = pname(ifname)
-     if Process.whereis(pidname) do
-       GenServer.call(pidname, :scan, 30_000)
-     else
-       {:error, :not_started}
-     end
+  # Support atom interface names to avoid breaking some existing
+  # code. This is a deprecated use of the API.
+  @spec scan(Types.ifname | atom) :: [String.t] | {:error, any}
+  def scan(ifname) when is_atom(ifname), do: scan(to_string(ifname))
+  def scan(ifname) when is_binary(ifname) do
+    with pid when is_pid(pid) <- Process.whereis(pname(ifname)),
+      :wireless <- if_type(ifname) do
+        GenServer.call(pid, :scan, 30_000)
+      else
+       # If there is no pid.
+       nil -> {:error, :not_started}
+       # if the interface was wired.
+       :wired -> {:error, :not_wireless}
+      end
   end
 
   @spec pname(Types.ifname) :: atom
