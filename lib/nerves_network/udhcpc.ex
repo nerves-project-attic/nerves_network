@@ -18,7 +18,7 @@ defmodule Nerves.Network.Udhcpc do
   alias Nerves.Network.{Types, Utils}
 
   @typedoc "Instance of this server."
-  @type udhpc :: GenServer.server
+  @type udhcpc :: GenServer.server
 
   @moduledoc """
   This module interacts with `udhcpc` to interact with DHCP servers.
@@ -107,7 +107,7 @@ defmodule Nerves.Network.Udhcpc do
   @typedoc "Event from the udhcpc server to be sent via SystemRegistry."
   @type event :: :deconfig | :bound | :renew | :leasefail | :nak
 
-  @spec handle_udhcpc(udhcpc_wrapper_event, Types.ifname, state) :: state
+  @spec handle_udhcpc(udhcpc_wrapper_event, state) :: state
   defp handle_udhcpc(["deconfig", ifname | _rest], state) do
     Logger.debug "udhcpc: deconfigure #{ifname}"
 
