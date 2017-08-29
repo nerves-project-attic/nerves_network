@@ -1,8 +1,10 @@
 defmodule Nerves.Network.IFSupervisor do
   use Supervisor
+  alias Nerves.Network.Types
 
   @moduledoc false
 
+  @spec start_link(GenServer.options) :: GenServer.on_start()
   def start_link(options \\ []) do
     Supervisor.start_link(__MODULE__, [], options)
   end
@@ -11,6 +13,7 @@ defmodule Nerves.Network.IFSupervisor do
       {:ok, {{:one_for_one, 10, 3600}, []}}
   end
 
+  @spec setup(Types.ifname | atom, Nerves.Network.setup_settings) :: Supervisor.on_start_child()
   def setup(ifname, settings) when is_atom(ifname) do
     setup(to_string(ifname), settings)
   end
@@ -27,6 +30,7 @@ defmodule Nerves.Network.IFSupervisor do
     end
   end
 
+  @spec teardown(Types.ifname) :: :ok | {:error, :not_started}
   def teardown(ifname) do
     pidname = pname(ifname)
     if Process.whereis(pidname) do
@@ -37,6 +41,7 @@ defmodule Nerves.Network.IFSupervisor do
     end
   end
 
+  @spec scan(Types.ifname) :: [String.t] | {:error, term()}
   def scan(ifname) do
      pidname = pname(ifname)
      if Process.whereis(pidname) do
@@ -46,12 +51,14 @@ defmodule Nerves.Network.IFSupervisor do
      end
   end
 
+  @spec pname(Types.ifname) :: String.t
   defp pname(ifname) do
     String.to_atom("Nerves.Network.Interface." <> ifname)
   end
 
   # Return the appropriate interface manager based on the interface's type
   # and settings
+  @spec manager(:wired | :wireless, Nerves.Network.setup_settings) :: Nerves.Network.StaticManager | Nerves.Network.LinkLocalManager | Nerves.Network.DHCPManager | Nerves.Network.WiFiManager
   defp manager(:wired, settings) do
     case Keyword.get(settings, :ipv4_address_method) do
       :static -> Nerves.Network.StaticManager
@@ -66,6 +73,8 @@ defmodule Nerves.Network.IFSupervisor do
     Nerves.Network.WiFiManager
   end
 
+
+  @spec if_type(Types.ifname) :: :wired | :wireless
   # Categorize networks into wired and wireless based on their if names
   defp if_type(<<"eth", _rest::binary>>), do: :wired
   defp if_type(<<"usb", _rest::binary>>), do: :wired

@@ -4,7 +4,7 @@ defmodule Nerves.Network do
 
   @moduledoc """
   The Nerves.Network application handles the low level details of connecting
-  to WiFi networks. To quickly get started, create a new Nerves project and add
+  to networks. To quickly get started, create a new Nerves project and add
   the following line someplace early on in your program:
 
       Nerves.Network.setup "wlan0", ssid: "myssid", key_mgmt: :"WPA-PSK", psk: "secretsecret"
@@ -78,7 +78,7 @@ defmodule Nerves.Network do
   @doc """
   If `ifname` is a wireless LAN, scan for access points.
   """
-  @spec scan(Types.ifname) :: [String.t]
+  @spec scan(Types.ifname) :: [String.t] | {:error, term()}
   def scan(ifname) do
     Nerves.Network.IFSupervisor.scan ifname
   end
@@ -86,7 +86,7 @@ defmodule Nerves.Network do
   @doc """
   Change the regulatory domain for wireless operations. This must be set to the
   two character `alpha2` code for the country where this device is operating.
-  See http://git.kernel.org/cgit/linux/kernel/git/sforshee/wireless-regdb.git/tree/db.txt
+  See [the kernel database](http://git.kernel.org/cgit/linux/kernel/git/sforshee/wireless-regdb.git/tree/db.txt)
   for the latest database and the frequencies allowed per country.
 
   The default is to use the world regulatory domain (00).

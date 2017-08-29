@@ -1,4 +1,5 @@
 defmodule Nerves.Network.Utils do
+  @moduledoc false
   @scope [:state, :network_interface]
 
   def notify(registry, key, notif, data) do

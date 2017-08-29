@@ -17,6 +17,9 @@ defmodule Nerves.Network.Udhcpc do
   require Logger
   alias Nerves.Network.Utils
 
+  @typedoc "Event from the udhcpc wrapper."
+  @type event :: term() #FIXME
+
   @moduledoc """
   This module interacts with `udhcpc` to interact with DHCP servers.
   """
