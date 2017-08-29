@@ -142,7 +142,7 @@ defmodule Nerves.Network.Resolvconf do
   end
   defp nameserver_text(_), do: ""
 
-  @spec write_resolvconf(%{filename: Path.t}) :: :ok
+  @spec write_resolvconf(%{filename: Path.t, ifmap: ifmap | map}) :: :ok
   defp write_resolvconf(state) do
     domains = Enum.map(state.ifmap, &domain_text/1)
     nameservers = Enum.map(state.ifmap, &nameserver_text/1)
