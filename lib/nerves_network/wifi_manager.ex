@@ -2,6 +2,7 @@ defmodule Nerves.Network.WiFiManager do
   use GenServer
   require Logger
   import Nerves.Network.Utils
+  alias Nerves.Network.Types
 
   @moduledoc false
 
@@ -10,14 +11,27 @@ defmodule Nerves.Network.WiFiManager do
   @wpa_supplicant_path "/usr/sbin/wpa_supplicant"
   @wpa_control_path "/var/run/wpa_supplicant"
   @wpa_config_file "/tmp/nerves_network_wpa.conf"
-  # The current state machine state is called "context" to avoid confusion between server
-  # state and state machine state.
+
   defstruct context: :removed,
             ifname: nil,
             settings: nil,
             dhcp_pid: nil,
             wpa_pid: nil
 
+
+  @typep context :: Types.interface_context
+
+  @typedoc "State of the GenServer."
+  @type t :: %__MODULE__{
+    context: context,
+    ifname: Types.ifname | nil,
+    settings: Nerves.Network.setup_settings | nil,
+    dhcp_pid: GenServer.server | nil,
+    wpa_pid: GenServer.server | nil
+  }
+
+  @doc false
+  @spec start_link(Types.ifname, Nerves.Network.setup_settings, GenServer.options) :: GenServer.on_start
   def start_link(ifname, settings, opts \\ []) do
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
@@ -46,51 +60,67 @@ defmodule Nerves.Network.WiFiManager do
     {:ok, state}
   end
 
-  def handle_event({Nerves.NetworkInterface, :ifadded, %{:ifname => ifname}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}) ifadded"
+  @typedoc "Event parsed from SystemRegistry WpaSupplicant messages."
+  @type wifi_event :: :wifi_connected | :wifi_disconnected | :noop
+
+  @typedoc "Event from SystemRegistry."
+  @type registry_event_tuple :: {Nerves.NetworkInterface, atom, %{ifname: Types.ifname}} |
+    {Nerves.WpaSupplicant, atom, %{ifname: Types.ifname, is_up: boolean}}
+
+  @typedoc "Event from either NetworkInterface or WpaSupplicant."
+  @type registry_event :: Types.ifevent | wifi_event
+
+  @spec handle_registry_event(registry_event_tuple) :: registry_event
+  defp handle_registry_event({Nerves.NetworkInterface, :ifadded, %{:ifname => ifname}}) do
+    Logger.info "WiFiManager(#{ifname}) network_interface ifadded"
     :ifadded
   end
   # :ifmoved occurs on systems that assign stable names to removable
   # interfaces. I.e. the interface is added under the dynamically chosen
   # name and then quickly renamed to something that is stable across boots.
-  def handle_event({Nerves.NetworkInterface, :ifmoved, %{:ifname => ifname}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}) ifadded (moved)"
+  defp handle_registry_event({Nerves.NetworkInterface, :ifmoved, %{:ifname => ifname}}) do
+    Logger.info "WiFiManager(#{ifname}) network_interface ifadded (moved)"
     :ifadded
   end
-  def handle_event({Nerves.NetworkInterface, :ifremoved, %{:ifname => ifname}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}) ifremoved"
+
+  defp handle_registry_event({Nerves.NetworkInterface, :ifremoved, %{:ifname => ifname}}) do
+    Logger.info "WiFiManager(#{ifname}) network_interface ifremoved"
     :ifremoved
   end
 
   # Filter out ifup and ifdown events
   # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
   # :is_lower_up reports whether the interface has associated with an AP
-  def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_up: true}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}) ifup"
+  defp handle_registry_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_up: true}}) do
+    Logger.info "WiFiManager(#{ifname}) network_interface ifup"
     :ifup
   end
-  def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_up: false}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}) ifdown"
+
+  defp handle_registry_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_up: false}}) do
+    Logger.info "WiFiManager(#{ifname}) network_interface ifdown"
     :ifdown
   end
 
+  # Ignore events
+  defp handle_registry_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
+    Logger.info "WiFiManager(#{ifname}): ignoring event: #{inspect event}"
+    :noop
+  end
+
   # wpa_supplicant events
-  def handle_event({Nerves.WpaSupplicant, :"CTRL-EVENT-CONNECTED", %{ifname: ifname}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}) wifi_connected"
+  defp handle_registry_event({Nerves.WpaSupplicant, :"CTRL-EVENT-CONNECTED", %{ifname: ifname}}) do
+    Logger.info "WiFiManager(#{ifname}) wpa_supplicant wifi_connected"
     :wifi_connected
   end
-  def handle_event({Nerves.WpaSupplicant, :"CTRL-EVENT-DISCONNECTED", %{ifname: ifname}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}) wifi_disconnected"
+
+  defp handle_registry_event({Nerves.WpaSupplicant, :"CTRL-EVENT-DISCONNECTED", %{ifname: ifname}}) do
+    Logger.info "WiFiManager(#{ifname}) wpa_supplicant wifi_disconnected"
     :wifi_disconnected
   end
 
   # Ignore events
-  def handle_event({Nerves.WpaSupplicant, event, %{ifname: ifname}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
-    :noop
-  end
-  def handle_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
-    Logger.info "WiFiManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
+  defp handle_registry_event({Nerves.WpaSupplicant, event, %{ifname: ifname}}) do
+    Logger.info "WiFiManager(#{ifname}): ignoring event: #{inspect event}"
     :noop
   end
 
@@ -107,7 +137,7 @@ defmodule Nerves.Network.WiFiManager do
   # # DHCP events
   # # :bound, :renew, :deconfig, :nak
   def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
-    Logger.info "DHCPManager.EventHandler(#{ifname}) udhcpc #{inspect event}"
+    Logger.info "DHCPManager(#{ifname}) udhcpc #{inspect event}"
     scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
@@ -115,16 +145,15 @@ defmodule Nerves.Network.WiFiManager do
 
   def handle_info({registry, _, ifstate} = event, %{ifname: ifname} = s)
    when registry in [Nerves.NetworkInterface, Nerves.WpaSupplicant] do
-    event = handle_event(event)
+    event = handle_registry_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     Logger.info "#{inspect registry} - WiFiManager(#{ifname}, #{s.context}) got event #{inspect event}"
     s = consume(s.context, event, s)
-    #IO.inspect s, label: "New State"
     {:noreply, s}
   end
 
   def handle_info(event, s) do
-    Logger.info "WiFiManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
+    Logger.info "WiFiManager(#{s.ifname}): ignoring event: #{inspect event}"
     {:noreply, s}
   end
 
@@ -132,11 +161,13 @@ defmodule Nerves.Network.WiFiManager do
     stop_wpa(s)
   end
 
+  @spec goto_context(t, context) :: t
   ## State machine implementation
   defp goto_context(state, newcontext) do
     %Nerves.Network.WiFiManager{state | context: newcontext}
   end
 
+  @spec consume(context, registry_event, t) :: t
   defp consume(_, :noop, state), do: state
   ## Context: :removed
   defp consume(:removed, :ifadded, state) do
@@ -240,7 +271,7 @@ defmodule Nerves.Network.WiFiManager do
       |> goto_context(:associate_wifi)
   end
 
-
+  @spec stop_wpa(t) :: t
   defp stop_wpa(state) do
     if is_pid(state.wpa_pid) do
       Nerves.WpaSupplicant.stop(state.wpa_pid)
@@ -249,6 +280,8 @@ defmodule Nerves.Network.WiFiManager do
       state
     end
   end
+
+  @spec start_wpa(t) :: t
   defp start_wpa(state) do
     state = stop_wpa(state)
     wpa_control_pipe = @wpa_control_path <> "/#{state.ifname}"
@@ -280,6 +313,7 @@ defmodule Nerves.Network.WiFiManager do
     %Nerves.Network.WiFiManager{state | wpa_pid: pid}
   end
 
+  @spec stop_udhcpc(t) :: t
   defp stop_udhcpc(state) do
     if is_pid(state.dhcp_pid) do
       Nerves.Network.Udhcpc.stop(state.dhcp_pid)
@@ -288,24 +322,29 @@ defmodule Nerves.Network.WiFiManager do
       state
     end
   end
+
+  @spec start_udhcpc(t) :: t
   defp start_udhcpc(state) do
     state = stop_udhcpc(state)
     {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
     %Nerves.Network.WiFiManager{state | dhcp_pid: pid}
   end
 
+  @spec configure(t, Nerves.Network.setup_settings) :: t
   defp configure(state, info) do
     :ok = Nerves.NetworkInterface.setup(state.ifname, info)
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
     state
   end
 
+  @spec deconfigure(t) :: t
   defp deconfigure(state) do
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
 
-  defp write_wpa_conf() do
+  @spec write_wpa_conf :: :ok | no_return
+  defp write_wpa_conf do
     # Get the regulatory domain from the configuration.
     # "00" is the world domain
     regulatory_domain = Application.get_env(:nerves_network, :regulatory_domain, "00")
