@@ -156,12 +156,19 @@ defmodule Nerves.Network.WiFiManager do
     :noop
   end
 
-  def handle_call(:scan, _from, %{wpa_pid: wpa_pid} = s) do
+  # This happens when we are managing a wireless interface, but we haven't got
+  # the `ifup` event yet. 
+  def handle_call(_call, _from, %{wpa_pid: nil} = s) do
+    {:reply, {:error, :wpa_not_started}, s}
+  end
+
+  # if the wpa_pid is nil, we don't want to actually create the call.
+  def handle_call(:scan, _from, %{wpa_pid: wpa_pid} = s) when is_pid(wpa_pid) do
     results = Nerves.WpaSupplicant.scan(wpa_pid)
     {:reply, results, s}
   end
 
-  def handle_call(:status, _from, %{wpa_pid: wpa_pid} = s) do
+  def handle_call(:status, _from, %{wpa_pid: wpa_pid} = s) when is_pid(wpa_pid) do
     results = Nerves.WpaSupplicant.status(wpa_pid)
     {:reply, results, s}
   end
