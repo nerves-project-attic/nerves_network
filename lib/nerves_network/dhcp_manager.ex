@@ -16,7 +16,7 @@ defmodule Nerves.Network.DHCPManager do
   @typedoc "Settings for starting the server."
   @type dhcp_settings :: Nerves.Network.setup_settings
 
-  @typep context :: Types.interface_context
+  @typep context :: Types.interface_context | :dhcp | :dhcp_retry
 
   @typedoc """
   The current state machine state is called "context" to avoid confusion between server
@@ -37,7 +37,6 @@ defmodule Nerves.Network.DHCPManager do
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
-  @spec init({Types.ifname, dhcp_settings}) :: {:ok, t}
   def init({ifname, settings}) do
     # Register for nerves_network_interface and udhcpc events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
@@ -134,49 +133,33 @@ defmodule Nerves.Network.DHCPManager do
 
   @spec consume(context, event, t) :: t
   defp consume(_, :noop, state), do: state
+
   ## Context: :removed
   defp consume(:removed, :ifadded, state) do
-    case Nerves.NetworkInterface.ifup(state.ifname) do
-      :ok ->
-        {:ok, status} = Nerves.NetworkInterface.status state.ifname
-        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+    :ok = Nerves.NetworkInterface.ifup(state.ifname)
 
-        state
-          |> goto_context(:down)
-      {:error, _} ->
-        # The interface isn't quite up yet. Retry
-        Process.send_after self(), :retry_ifadded, 250
-        state
-          |> goto_context(:retry_add)
-    end
-  end
-  defp consume(:removed, :retry_ifadded, state), do: state
-  defp consume(:removed, :ifdown, state), do: state
-
-  ## Context: :retry_add
-  defp consume(:retry_add, :ifremoved, state) do
-    state
-      |> goto_context(:removed)
-  end
-  defp consume(:retry_add, :retry_ifadded, state) do
-    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
+    {:ok, status} = Nerves.NetworkInterface.status state.ifname
     notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
-    state
-      |> goto_context(:down)
+    state |> goto_context(:down)
   end
+
+  defp consume(:removed, :ifdown, state), do: state
 
   ## Context: :down
   defp consume(:down, :ifadded, state), do: state
+
   defp consume(:down, :ifup, state) do
     state
       |> start_udhcpc
       |> goto_context(:dhcp)
   end
+
   defp consume(:down, :ifdown, state) do
     state
       |> stop_udhcpc
   end
+
   defp consume(:down, :ifremoved, state) do
     state
       |> stop_udhcpc
@@ -185,20 +168,7 @@ defmodule Nerves.Network.DHCPManager do
 
   ## Context: :dhcp
   defp consume(:dhcp, :ifup, state), do: state
-  defp consume(:dhcp, {:deconfig, _info}, state), do: state
-  defp consume(:dhcp, {:bound, info}, state) do
-    state
-      |> configure(info)
-      |> goto_context(:up)
-  end
-  defp consume(:dhcp, {:leasefail, _info}, state) do
-    dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
-    %{state | dhcp_retry_timer: dhcp_retry_timer}
-      |> stop_udhcpc
-      |> start_link_local
-      |> goto_context(:up)
 
-  end
   defp consume(:dhcp, :ifdown, state) do
     state
       |> stop_udhcpc
@@ -207,18 +177,19 @@ defmodule Nerves.Network.DHCPManager do
 
   ## Context: :up
   defp consume(:up, :ifup, state), do: state
+
   defp consume(:up, :dhcp_retry, state) do
     state
       |> start_udhcpc
       |> goto_context(:dhcp)
   end
+
   defp consume(:up, :ifdown, state) do
     state
       |> stop_udhcpc
       |> deconfigure
       |> goto_context(:down)
   end
-  defp consume(:up, {:leasefail, _info}, state), do: state
 
   # Catch-all handler for consume
   defp consume(context, event, state) do
@@ -241,25 +212,6 @@ defmodule Nerves.Network.DHCPManager do
     state = stop_udhcpc(state)
     {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
     %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
-  end
-
-  @spec start_link_local(t) :: t
-  defp start_link_local(state) do
-    {:ok, ifsettings} = Nerves.NetworkInterface.status(state.ifname)
-    ip = generate_link_local(ifsettings.mac_address)
-    scope(state.ifname)
-    |> SystemRegistry.update(%{ipv4_address: ip})
-    :ok = Nerves.NetworkInterface.setup(state.ifname, [ipv4_address: ip])
-    state
-  end
-
-  @type configure_info :: term() #FIXME
-
-  @spec configure(t, configure_info) :: t
-  defp configure(state, info) do
-    :ok = Nerves.NetworkInterface.setup(state.ifname, info)
-    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
-    state
   end
 
   @spec deconfigure(t) :: t
