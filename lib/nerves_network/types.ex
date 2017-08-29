@@ -6,4 +6,11 @@ defmodule Nerves.Network.Types do
 
   @typedoc "Interface name string."
   @type ifname :: String.t
+
+  # Please move this innto Nerves.NetworkInterface.
+  @typedoc "Event from Nerves.NetworkInterface"
+  @type ifevent :: :ifadded | :ifremoved | :ifmoved | :ifup | :ifdown | :noop
+
+  @typedoc "Atom for the context state machine."
+  @type interface_context :: :removed | :removed | :retry_add | :down | :dhcp | :up
 end

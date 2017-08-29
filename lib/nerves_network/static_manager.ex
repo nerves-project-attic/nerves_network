@@ -3,12 +3,24 @@ defmodule Nerves.Network.StaticManager do
 
   use GenServer
   import Nerves.Network.Utils
+  alias Nerves.Network.Types
   require Logger
 
   defstruct context: :removed,
             ifname: nil,
             settings: nil
 
+  @typep context :: Types.interface_context
+
+  @typedoc "GenServer state."
+  @type t :: %__MODULE__{
+    context: context,
+    ifname: Types.ifname | nil,
+    settings: Nerves.Network.setup_settings | nil
+  }
+
+  @doc false
+  @spec start_link(Types.ifname, Nerves.Network.setup_settings, GenServer.options) :: GenServer.on_start
   def start_link(ifname, settings, opts \\ []) do
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
@@ -35,51 +47,57 @@ defmodule Nerves.Network.StaticManager do
   end
 
   def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
-    event = handle_event(event)
+    event = handle_network_interface_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
     Logger.info "StaticManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
     {:noreply, s}
   end
 
-  def handle_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
-    Logger.info "StaticManager.EventHandler(#{ifname}) ifadded"
+  @spec handle_network_interface_event({Nerves.NetworkInterface, Types.ifevent, %{ifname: Types.ifname}}) :: Types.ifevent
+  def handle_network_interface_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
+    Logger.info "StaticManager(#{ifname}) network_interface ifadded"
     :ifadded
   end
   # :ifmoved occurs on systems that assign stable names to removable
   # interfaces. I.e. the interface is added under the dynamically chosen
   # name and then quickly renamed to something that is stable across boots.
-  def handle_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
-    Logger.info "StaticManager.EventHandler(#{ifname}) ifadded (moved)"
+  def handle_network_interface_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
+    Logger.info "StaticManager(#{ifname}) network_interface ifadded (moved)"
     :ifadded
   end
-  def handle_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
-    Logger.info "StaticManager.EventHandler(#{ifname}) ifremoved"
+  def handle_network_interface_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
+    Logger.info "StaticManager(#{ifname}) network_interface ifremoved"
     :ifremoved
   end
 
   # Filter out ifup and ifdown events
   # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
   # :is_lower_up reports whether the interface as associated with an AP
-  def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}) do
-    Logger.info "StaticManager.EventHandler(#{ifname}) ifup"
+  def handle_network_interface_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}) do
+    Logger.info "StaticManager(#{ifname}) network_interface ifup"
     :ifup
   end
-  def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}) do
-    Logger.info "StaticManager.EventHandler(#{ifname}) ifdown"
+  def handle_network_interface_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}) do
+    Logger.info "StaticManager(#{ifname}) network_interface ifdown"
     :ifdown
   end
 
-  def handle_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
-    Logger.info "StaticManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
+  def handle_network_interface_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
+    Logger.info "StaticManager(#{ifname}): network_interface ignoring event: #{inspect event}"
     :noop
   end
 
   ## State machine implementation
+  @spec goto_context(t, context) :: t
   defp goto_context(state, newcontext) do
     %Nerves.Network.StaticManager{state | context: newcontext}
   end
 
+  @typedoc "Network event to be consumed."
+  @type event :: Types.ifevent
+
+  @spec consume(context, event, t) :: t
   defp consume(_, :noop, state), do: state
 
   defp consume(:removed, :ifadded, state) do
@@ -131,12 +149,14 @@ defmodule Nerves.Network.StaticManager do
       |> goto_context(:down)
   end
 
+  @spec configure(t) :: t
   defp configure(state) do
     :ok = Nerves.NetworkInterface.setup(state.ifname, state.settings)
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, state.settings)
     state
   end
 
+  @spec deconfigure(t) :: t
   defp deconfigure(state) do
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
