@@ -15,10 +15,10 @@
 defmodule Nerves.Network.Udhcpc do
   use GenServer
   require Logger
-  alias Nerves.Network.Utils
+  alias Nerves.Network.{Types, Utils}
 
-  @typedoc "Event from the udhcpc wrapper."
-  @type event :: term() #FIXME
+  @typedoc "Instance of this server."
+  @type udhpc :: GenServer.server
 
   @moduledoc """
   This module interacts with `udhcpc` to interact with DHCP servers.
@@ -28,6 +28,7 @@ defmodule Nerves.Network.Udhcpc do
   Start and link a Udhcpc process for the specified interface (i.e., eth0,
   wlan0).
   """
+  @spec start_link(Types.ifname) :: GenServer.on_start()
   def start_link(ifname) do
     GenServer.start_link(__MODULE__, ifname)
   end
@@ -37,6 +38,7 @@ defmodule Nerves.Network.Udhcpc do
   this interface. After calling this, be sure to disassociate the IP address
   from the interface so that packets don't accidentally get sent or processed.
   """
+  @spec release(udhcpc) :: :ok
   def release(pid) do
     GenServer.call(pid, :release)
   end
@@ -44,6 +46,7 @@ defmodule Nerves.Network.Udhcpc do
   @doc """
   Renew the lease on the IP address with the DHCP server.
   """
+  @spec renew(udhcpc) :: :ok
   def renew(pid) do
     GenServer.call(pid, :renew)
   end
@@ -51,6 +54,7 @@ defmodule Nerves.Network.Udhcpc do
   @doc """
   Stop the dhcp client
   """
+  @spec stop(udhcpc) :: :ok
   def stop(pid) do
     GenServer.stop(pid)
   end
@@ -87,10 +91,6 @@ defmodule Nerves.Network.Udhcpc do
     {:reply, :ok, state}
   end
 
-  # def handle_cast(:stop, state) do
-  #   {:stop, :normal, state}
-  # end
-
   def handle_info({_, {:data, {:eol, message}}}, state) do
     message
       |> List.to_string
@@ -98,41 +98,55 @@ defmodule Nerves.Network.Udhcpc do
       |> handle_udhcpc(state)
   end
 
+  @typedoc "State of the GenServer."
+  @type state :: %{ifname: Types.ifname, port: port}
+
+  @typedoc "Message from the udhcpc port."
+  @type udhcpc_wrapper_event :: [...] # we can do better.
+
+  @typedoc "Event from the udhcpc server to be sent via SystemRegistry."
+  @type event :: :deconfig | :bound | :renew | :leasefail | :nak
+
+  @spec handle_udhcpc(udhcpc_wrapper_event, Types.ifname, state) :: state
   defp handle_udhcpc(["deconfig", ifname | _rest], state) do
     Logger.debug "udhcpc: deconfigure #{ifname}"
 
     Utils.notify(Nerves.Udhcpc, state.ifname, :deconfig, %{ifname: ifname})
     {:noreply, state}
   end
+
   defp handle_udhcpc(["bound", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
     Logger.debug "udhcpc: bound #{ifname}: IP=#{ip}, dns=#{inspect dns}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
     {:noreply, state}
   end
+
   defp handle_udhcpc(["renew", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
     Logger.debug "udhcpc: renew #{ifname}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
     {:noreply, state}
   end
+
   defp handle_udhcpc(["leasefail", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
     Logger.debug "udhcpc: #{ifname}: leasefail #{message}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :leasefail, %{ifname: ifname, message: message})
     {:noreply, state}
   end
+
   defp handle_udhcpc(["nak", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
     Logger.debug "udhcpc: #{ifname}: NAK #{message}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :nak, %{ifname: ifname, message: message})
     {:noreply, state}
   end
+
   defp handle_udhcpc(_something_else, state) do
-    #msg = List.foldl(something_else, "", &<>/2)
-    #Logger.debug "udhcpc: ignoring unhandled message: #{msg}"
     {:noreply, state}
   end
 
-  defp hostname() do
+  @spec hostname :: String.t
+  defp hostname do
     {:ok, hostname} = :inet.gethostname()
     to_string(hostname)
     |> String.trim
