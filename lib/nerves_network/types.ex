@@ -12,5 +12,7 @@ defmodule Nerves.Network.Types do
   @type ifevent :: :ifadded | :ifremoved | :ifmoved | :ifup | :ifdown | :noop | :retry_ifadded
 
   @typedoc "Atom for the context state machine."
-  @type interface_context :: :removed | :removed | :retry_add | :down | :up
+  @type interface_context :: :removed | :retry_add | :down | :up
+
+  @type udhcp_info :: %{ifname: ifname, nameservers: [ip_address], domain: String.t}
 end

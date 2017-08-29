@@ -107,7 +107,7 @@ defmodule Nerves.Network.Udhcpc do
   @typedoc "Event from the udhcpc server to be sent via SystemRegistry."
   @type event :: :deconfig | :bound | :renew | :leasefail | :nak
 
-  @spec handle_udhcpc(udhcpc_wrapper_event, state) :: state
+  @spec handle_udhcpc(udhcpc_wrapper_event, state) :: {:noreply, state}
   defp handle_udhcpc(["deconfig", ifname | _rest], state) do
     Logger.debug "udhcpc: deconfigure #{ifname}"
 
