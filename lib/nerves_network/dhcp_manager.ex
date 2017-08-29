@@ -13,11 +13,10 @@ defmodule Nerves.Network.DHCPManager do
             dhcp_retry_interval: 60_000,
             dhcp_retry_timer: nil
 
-  @typedoc "Atom for the context state machine."
-  @type context :: :removed | :removed | :retry_add | :down | :dhcp | :up
-
   @typedoc "Settings for starting the server."
   @type dhcp_settings :: Nerves.Network.setup_settings
+
+  @typep context :: Types.interface_context
 
   @typedoc """
   The current state machine state is called "context" to avoid confusion between server
@@ -58,10 +57,7 @@ defmodule Nerves.Network.DHCPManager do
     {:ok, state}
   end
 
-  @typedoc "Event from Nerves.NetworkInterface"
-  @type ifevent :: :ifadded | :ifremoved | :ifmoved | :ifup | :ifdown | :noop
-
-  @spec handle_network_interface_event({Nerves.NetworkInterface, ifevent, %{ifname: Types.ifname}}) :: ifevent
+  @spec handle_network_interface_event({Nerves.NetworkInterface, Types.ifevent, %{ifname: Types.ifname}}) :: Types.ifevent
   defp handle_network_interface_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
     Logger.debug "DHCPManager(#{ifname}) network_interface ifadded"
     :ifadded
@@ -134,7 +130,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   @typedoc "Event for the state machine."
-  @type event :: ifevent | Nerves.Network.Udhcpc.event
+  @type event :: Types.ifevent | Nerves.Network.Udhcpc.event
 
   @spec consume(context, event, t) :: t
   defp consume(_, :noop, state), do: state
