@@ -51,7 +51,7 @@ defmodule Nerves.Network.IFSupervisor do
      end
   end
 
-  @spec pname(Types.ifname) :: String.t
+  @spec pname(Types.ifname) :: atom
   defp pname(ifname) do
     String.to_atom("Nerves.Network.Interface." <> ifname)
   end

@@ -101,33 +101,11 @@ defmodule Nerves.Network.StaticManager do
   defp consume(_, :noop, state), do: state
 
   defp consume(:removed, :ifadded, state) do
-    case Nerves.NetworkInterface.ifup(state.ifname) do
-      :ok ->
-        {:ok, status} = Nerves.NetworkInterface.status state.ifname
-        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
-
-        state
-          |> goto_context(:down)
-      {:error, _} ->
-        # The interface isn't quite up yet. Retry
-        Process.send_after self(), :retry_ifadded, 250
-        state
-          |> goto_context(:retry_add)
-    end
-  end
-  defp consume(:removed, :retry_ifadded, state), do: state
-
-  ## Context: :retry_add
-  defp consume(:retry_add, :ifremoved, state) do
-    state
-      |> goto_context(:removed)
-  end
-  defp consume(:retry_add, :retry_ifadded, state) do
-    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
+    :ok = Nerves.NetworkInterface.ifup(state.ifname)
+    {:ok, status} = Nerves.NetworkInterface.status state.ifname
     notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
-    state
-      |> goto_context(:down)
+    state |> goto_context(:down)
   end
 
   ## Context: :down
@@ -136,13 +114,16 @@ defmodule Nerves.Network.StaticManager do
       |> configure
       |> goto_context(:up)
   end
+
   defp consume(:down, :ifdown, state), do: state
+
   defp consume(:down, :ifremoved, state) do
     state
       |> goto_context(:removed)
   end
 
   defp consume(:up, :ifup, state), do: state
+  
   defp consume(:up, :ifdown, state) do
     state
       |> deconfigure

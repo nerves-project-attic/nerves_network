@@ -47,7 +47,7 @@ defmodule Nerves.Network.Resolvconf do
 
     %{domain: "example.com", nameservers: ["8.8.8.8", "8.8.4.4"]}
   """
-  @spec setup(resolvconf, Types.ifname, Nerves.Network.setup_settings | ifmap) :: :ok
+  @spec setup(resolvconf, Types.ifname, Nerves.Network.setup_settings | Types.udhcp_info) :: :ok
   def setup(resolv_conf, ifname, options) when is_list(options) do
     setup(resolv_conf, ifname, :maps.from_list(options))
   end
@@ -142,7 +142,7 @@ defmodule Nerves.Network.Resolvconf do
   end
   defp nameserver_text(_), do: ""
 
-  @spec write_resolvconf(state) :: :ok | no_return
+  @spec write_resolvconf(%{filename: Path.t}) :: :ok
   defp write_resolvconf(state) do
     domains = Enum.map(state.ifmap, &domain_text/1)
     nameservers = Enum.map(state.ifmap, &nameserver_text/1)
