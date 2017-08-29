@@ -1,6 +1,7 @@
 defmodule Nerves.Network.IFSupervisor do
   use Supervisor
   alias Nerves.Network.Types
+  import Nerves.Network.Utils, only: [log_atomized_iface_error: 1]
 
   @moduledoc false
 
@@ -15,6 +16,7 @@ defmodule Nerves.Network.IFSupervisor do
 
   @spec setup(Types.ifname | atom, Nerves.Network.setup_settings) :: Supervisor.on_start_child()
   def setup(ifname, settings) when is_atom(ifname) do
+    log_atomized_iface_error(ifname)
     setup(to_string(ifname), settings)
   end
 
@@ -45,7 +47,10 @@ defmodule Nerves.Network.IFSupervisor do
   # Support atom interface names to avoid breaking some existing
   # code. This is a deprecated use of the API.
   @spec scan(Types.ifname | atom) :: [String.t] | {:error, any}
-  def scan(ifname) when is_atom(ifname), do: scan(to_string(ifname))
+  def scan(ifname) when is_atom(ifname) do
+    log_atomized_iface_error(ifname)
+    scan(to_string(ifname))
+  end
   def scan(ifname) when is_binary(ifname) do
     with pid when is_pid(pid) <- Process.whereis(pname(ifname)),
       :wireless <- if_type(ifname) do

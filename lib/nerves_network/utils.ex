@@ -2,6 +2,13 @@ defmodule Nerves.Network.Utils do
   @moduledoc false
   @scope [:state, :network_interface]
 
+  @doc false
+  def log_atomized_iface_error(ifname) when is_atom(ifname) do
+    require Logger
+    Logger.warn "Support for atom interface names is deprecated. Please consider calling as \"#{ifname}\"."
+  end
+
+
   def notify(registry, key, notif, data) do
     Registry.dispatch(registry, key, fn entries ->
       for {pid, _} <- entries, do: send(pid, {registry, notif, data})
