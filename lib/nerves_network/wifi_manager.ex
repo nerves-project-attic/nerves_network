@@ -26,7 +26,7 @@ defmodule Nerves.Network.WiFiManager do
     context: context,
     ifname: Types.ifname | nil,
     settings: Nerves.Network.setup_settings | nil,
-    dhcp_pid: GenServer.server | nil,
+    dhcp_pid: GenServer.server | nil | false,
     wpa_pid: GenServer.server | nil
   }
 
@@ -42,10 +42,17 @@ defmodule Nerves.Network.WiFiManager do
     Logger.info "Register Nerves.NetworkInterface #{inspect ifname}"
     # Register for nerves_network_interface events and udhcpc events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
-    {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
 
+    # check for DHCP here.
+    state = case Keyword.get(settings, :ipv4_address_method, :dhcp) do
+      # Register for udhcpc events.
+      :dhcp ->
+        {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
+        %Nerves.Network.WiFiManager{settings: settings, ifname: ifname}
+      :static ->
+        %Nerves.Network.WiFiManager{settings: settings, ifname: ifname, dhcp_pid: false}
+    end
     Logger.info "Done Registering"
-    state = %Nerves.Network.WiFiManager{settings: settings, ifname: ifname}
 
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
@@ -240,7 +247,12 @@ defmodule Nerves.Network.WiFiManager do
   end
 
   ## Context: :associate_wifi
+  defp consume(:associate_wifi, :ifup, %Nerves.Network.WiFiManager{dhcp_pid: false} = state) do
+    state |> setup_ip_settings
+  end
+
   defp consume(:associate_wifi, :ifup, state), do: state
+
   defp consume(:associate_wifi, :ifdown, state) do
     state
       |> stop_wpa
@@ -248,7 +260,7 @@ defmodule Nerves.Network.WiFiManager do
   end
   defp consume(:associate_wifi, :wifi_connected, state) do
     state
-      |> start_udhcpc
+      |> setup_ip_settings
       |> goto_context(:dhcp)
   end
   defp consume(:associate_wifi, :wifi_disconnected, state), do: state
@@ -370,8 +382,13 @@ defmodule Nerves.Network.WiFiManager do
     end
   end
 
-  @spec start_udhcpc(t) :: t
-  defp start_udhcpc(state) do
+  @spec setup_ip_settings(t) :: t
+  # If dhcp_pid is false (not nil) we don't want to setup dhcp.
+  defp setup_ip_settings(%Nerves.Network.WiFiManager{dhcp_pid: false} = s) do
+    configure(s, s.settings)
+  end
+
+  defp setup_ip_settings(state) do
     state = stop_udhcpc(state)
     {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
     %Nerves.Network.WiFiManager{state | dhcp_pid: pid}
