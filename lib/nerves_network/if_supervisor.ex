@@ -41,7 +41,7 @@ defmodule Nerves.Network.IFSupervisor do
     end
   end
 
-  @spec scan(Types.ifname) :: [String.t] | {:error, term()}
+  @spec scan(Types.ifname) :: [String.t] | {:error, any}
   def scan(ifname) do
      pidname = pname(ifname)
      if Process.whereis(pidname) do

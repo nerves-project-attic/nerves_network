@@ -78,7 +78,7 @@ defmodule Nerves.Network do
   @doc """
   If `ifname` is a wireless LAN, scan for access points.
   """
-  @spec scan(Types.ifname) :: [String.t] | {:error, term()}
+  @spec scan(Types.ifname) :: [String.t] | {:error, any}
   def scan(ifname) do
     Nerves.Network.IFSupervisor.scan ifname
   end
