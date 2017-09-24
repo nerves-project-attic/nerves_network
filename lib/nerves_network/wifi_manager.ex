@@ -291,6 +291,11 @@ defmodule Nerves.Network.WiFiManager do
     |> parse_settings
   end
 
+  defp parse_settings(settings = %{ key_mgmt: :NONE, psk: _psk }) do
+    Map.delete(settings, :psk)
+    |> parse_settings
+  end
+
   defp parse_settings(settings), do: settings
 
   defp stop_udhcpc(state) do
