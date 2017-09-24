@@ -350,6 +350,14 @@ defmodule Nerves.Network.WiFiManager do
     |> parse_settings
   end
 
+  # Detect when the use specifies no WiFi security but supplies a
+  # key anyway. This confuses wpa_supplicant and causes the failure
+  # described in #39.
+  defp parse_settings(settings = %{ key_mgmt: :NONE, psk: _psk }) do
+    Map.delete(settings, :psk)
+    |> parse_settings
+  end
+
   defp parse_settings(settings), do: settings
 
   @spec stop_udhcpc(t) :: t
