@@ -157,7 +157,7 @@ defmodule Nerves.Network.WiFiManager do
   end
 
   # This happens when we are managing a wireless interface, but we haven't got
-  # the `ifup` event yet. 
+  # the `ifup` event yet.
   def handle_call(_call, _from, %{wpa_pid: nil} = s) do
     {:reply, {:error, :wpa_not_started}, s}
   end
@@ -328,7 +328,7 @@ defmodule Nerves.Network.WiFiManager do
     {:ok, pid} = Nerves.WpaSupplicant.start_link(state.ifname, wpa_control_pipe, name: :"Nerves.WpaSupplicant.#{state.ifname}")
     Logger.info "Register Nerves.WpaSupplicant #{inspect state.ifname}"
     {:ok, _} = Registry.register(Nerves.WpaSupplicant, state.ifname, [])
-    wpa_supplicant_settings = Map.new(state.settings)
+    wpa_supplicant_settings = parse_settings(state.settings)
     case Nerves.WpaSupplicant.set_network(pid, wpa_supplicant_settings) do
       :ok -> :ok
       error ->
@@ -338,6 +338,19 @@ defmodule Nerves.Network.WiFiManager do
 
     %Nerves.Network.WiFiManager{state | wpa_pid: pid}
   end
+
+  defp parse_settings(settings) when is_list(settings) do
+    settings
+    |> Map.new
+    |> parse_settings
+  end
+
+  defp parse_settings(settings = %{ key_mgmt: key_mgmt }) when is_binary(key_mgmt) do
+    %{ settings | key_mgmt: String.to_atom(key_mgmt) }
+    |> parse_settings
+  end
+
+  defp parse_settings(settings), do: settings
 
   @spec stop_udhcpc(t) :: t
   defp stop_udhcpc(state) do
