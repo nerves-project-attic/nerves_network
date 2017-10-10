@@ -2,6 +2,9 @@
 
 ## v0.3.5-dev
 
+  * Enhancements
+    * Fix reporting of unhandled DHCP events.
+
 ## v0.3.4
 
   * Enhancements
