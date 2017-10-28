@@ -100,6 +100,7 @@ defmodule Nerves.Network.StaticManager do
   @spec consume(context, event, t) :: t
   defp consume(_, :noop, state), do: state
 
+  ## Context: removed
   defp consume(:removed, :ifadded, state) do
     :ok = Nerves.NetworkInterface.ifup(state.ifname)
     {:ok, status} = Nerves.NetworkInterface.status state.ifname
@@ -122,13 +123,16 @@ defmodule Nerves.Network.StaticManager do
       |> goto_context(:removed)
   end
 
+  ## Context: :up
   defp consume(:up, :ifup, state), do: state
-  
+
   defp consume(:up, :ifdown, state) do
     state
       |> deconfigure
       |> goto_context(:down)
   end
+
+  defp consume(:up, :ifadded, state), do: state
 
   @spec configure(t) :: t
   defp configure(state) do
