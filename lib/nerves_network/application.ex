@@ -7,7 +7,8 @@ defmodule Nerves.Network.Application do
     import Supervisor.Spec, warn: false
 
     children = [
-      supervisor(Registry, [:duplicate, Nerves.Udhcpc]),
+      supervisor(Registry, [:duplicate, Nerves.Udhcpc], id: Nerves.Udhcpc),
+      supervisor(Registry, [:duplicate, Nerves.Dhclient], id: Nerves.Dhclient),
       worker(Nerves.Network.Resolvconf, ["/tmp/resolv.conf", [name: Nerves.Network.Resolvconf]]),
       supervisor(Nerves.Network.IFSupervisor, [[name: Nerves.Network.IFSupervisor]]),
       worker(Nerves.Network.Config, []),

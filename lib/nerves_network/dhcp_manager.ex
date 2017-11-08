@@ -34,6 +34,7 @@ defmodule Nerves.Network.DHCPManager do
   @doc false
   @spec start_link(Types.ifname, dhcp_settings, GenServer.options) :: GenServer.on_start
   def start_link(ifname, settings, opts \\ []) do
+    Logger.debug fn -> "DHCPManager starting.... ifname: #{inspect ifname}; settings: #{inspect settings}" end
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
@@ -43,6 +44,7 @@ defmodule Nerves.Network.DHCPManager do
     {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
 
     state = %Nerves.Network.DHCPManager{settings: settings, ifname: ifname}
+    Logger.debug fn -> "#{__MODULE__}: initialising.... state: #{inspect state}" end
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
@@ -206,6 +208,7 @@ defmodule Nerves.Network.DHCPManager do
     dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
     %{state | dhcp_retry_timer: dhcp_retry_timer}
       |> stop_udhcpc
+      |> start_link_local
       |> goto_context(:up)
   end
 
@@ -231,6 +234,17 @@ defmodule Nerves.Network.DHCPManager do
       |> goto_context(:down)
   end
 
+  defp consume(:up, {:renew, info}, state) do
+    state
+    |> configure(info)
+
+    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
+    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+    state
+  end
+
+  defp consume(:up, {:leasefail, _info}, state), do: state
+
   # Catch-all handler for consume
   defp consume(context, event, state) do
     Logger.warn "Unhandled event #{inspect event} for context #{inspect context} in consume/3."
@@ -254,8 +268,19 @@ defmodule Nerves.Network.DHCPManager do
     %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
   end
 
+  defp start_link_local(state) do
+    {:ok, ifsettings} = Nerves.NetworkInterface.status(state.ifname)
+    ip = generate_link_local(ifsettings.mac_address)
+    scope(state.ifname)
+    |> SystemRegistry.update(%{ipv4_address: ip})
+    :ok = Nerves.NetworkInterface.setup(state.ifname, [ipv4_address: ip])
+    state
+  end
+
   @spec configure(t, Types.udhcp_info) :: t
   defp configure(state, info) do
+    Logger.debug("DHCP state #{inspect state} #{inspect info}")
+
     :ok = Nerves.NetworkInterface.setup(state.ifname, info)
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
     state

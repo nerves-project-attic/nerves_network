@@ -30,6 +30,7 @@ defmodule Nerves.Network.Udhcpc do
   """
   @spec start_link(Types.ifname) :: GenServer.on_start()
   def start_link(ifname) do
+    Logger.debug fn -> "#{__MODULE__}: Starting Udhcpc for #{inspect ifname}" end
     GenServer.start_link(__MODULE__, ifname)
   end
 
@@ -117,14 +118,14 @@ defmodule Nerves.Network.Udhcpc do
 
   defp handle_udhcpc(["bound", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
-    Logger.debug "udhcpc: bound #{ifname}: IP=#{ip}, dns=#{inspect dns}"
+    Logger.debug "udhcpc: bound #{ifname}: IP=#{ip}, dns=#{inspect dns} router=#{inspect router}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
     {:noreply, state}
   end
 
   defp handle_udhcpc(["renew", ifname, ip, broadcast, subnet, router, domain, dns, _message], state) do
     dnslist = String.split(dns, " ")
-    Logger.debug "udhcpc: renew #{ifname}"
+    Logger.debug "udhcpc: renew #{ifname}: IP=#{ip}, dns=#{inspect dns} router=#{inspect router}"
     Utils.notify(Nerves.Udhcpc, state.ifname, :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
     {:noreply, state}
   end

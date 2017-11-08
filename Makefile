@@ -22,6 +22,7 @@ ifeq ($(CROSSCOMPILE),)
     endif
 endif
 DEFAULT_TARGETS ?= priv priv/udhcpc_wrapper
+DEFAULT_TARGETS += priv/dhclient_wrapper
 
 LDFLAGS +=
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
@@ -47,6 +48,11 @@ priv:
 	mkdir -p priv
 
 priv/udhcpc_wrapper: src/udhcpc_wrapper.o
+	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
+	# setuid root udhcpc_wrapper so that it can call udhcpc
+	SUDO_ASKPASS=$(SUDO_ASKPASS) $(SUDO) -- sh -c 'chown root:root $@; chmod +s $@'
+
+priv/dhclient_wrapper: src/dhclient_wrapper.o
 	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
 	# setuid root udhcpc_wrapper so that it can call udhcpc
 	SUDO_ASKPASS=$(SUDO_ASKPASS) $(SUDO) -- sh -c 'chown root:root $@; chmod +s $@'
