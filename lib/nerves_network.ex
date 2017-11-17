@@ -56,7 +56,23 @@ defmodule Nerves.Network do
   end
 
   @doc """
-  Stop all control of `ifname`
+  Stop all control of non-default `ifname`
+
+  Any interface that is configured under `:default` cannot be torn down.
+
+  For example:
+
+  ## Config
+~~~
+  config :nerves_network, :default,
+    eth0: [
+      ipv4_address_method: :dhcp
+    ]
+~~~
+
+  ## Does Nothing
+
+  > Nerves.Network teardown("eth0")
   """
   @spec teardown(Types.ifname) :: :ok
   def teardown(ifname) do
