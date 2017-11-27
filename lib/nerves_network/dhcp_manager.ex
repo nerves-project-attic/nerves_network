@@ -175,6 +175,14 @@ defmodule Nerves.Network.DHCPManager do
       |> goto_context(:down)
   end
 
+  defp consume(:dhcp, {:deconfig, _info}, state), do: state
+
+  defp consume(:dhcp, {:bound, info}, state) do
+    state
+    |> configure(info)
+    |> goto_context(:up)
+  end
+
   ## Context: :up
   defp consume(:up, :ifup, state), do: state
 
@@ -191,9 +199,20 @@ defmodule Nerves.Network.DHCPManager do
       |> goto_context(:down)
   end
 
+  defp consume(:up, {:bound, _info}, state), do: state # already configured.
+
+  defp consume(:up, {:renew, _info}, state), do: state # already configured.
+
   # Catch-all handler for consume
   defp consume(context, event, state) do
     Logger.warn "Unhandled event #{event} for context #{inspect context} in consume/3."
+    state
+  end
+
+  @spec configure(t, Types.udhcp_info) :: t
+  defp configure(state, info) do
+    :ok = Nerves.NetworkInterface.setup(state.ifname, info)
+    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
     state
   end
 
