@@ -193,7 +193,7 @@ defmodule Nerves.Network.DHCPManager do
 
   # Catch-all handler for consume
   defp consume(context, event, state) do
-    Logger.warn "Unhandled event #{event} for context #{inspect context} in consume/3."
+    Logger.warn "Unhandled event #{inspect event} for context #{inspect context} in consume/3."
     state
   end
 
