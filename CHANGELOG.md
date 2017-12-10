@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.5-dev
+## v0.3.5
 
   * Enhancements
     * Fix reporting of unhandled DHCP events.
