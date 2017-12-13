@@ -93,6 +93,31 @@ defmodule Nerves.Network.DHCPManager do
     :noop
   end
 
+  defp handle_registry_event({Nerves.Udhcpc, :bound, %{ifname: ifname} = info}) do
+    Logger.info "WiFiManager(#{ifname}): udhcp bound"
+    {:bound, info}
+  end
+
+  defp handle_registry_event({Nerves.Udhcpc, :deconfig, %{ifname: ifname} = info}) do
+    Logger.info "WiFiManager(#{ifname}): udhcp deconfig"
+    {:deconfig, info}
+  end
+
+  defp handle_registry_event({Nerves.Udhcpc, :nak, %{ifname: ifname} = info}) do
+    Logger.info "WiFiManager(#{ifname}): udhcp nak"
+    {:nak, info}
+  end
+
+  defp handle_registry_event({Nerves.Udhcpc, :renew, %{ifname: ifname} = info}) do
+    Logger.info "WiFiManager(#{ifname}): udhcp renew"
+    {:renew, info}
+  end
+
+  defp handle_registry_event({Nerves.Udhcpc, event, %{ifname: ifname}}) do
+    Logger.info "WiFiManager(#{ifname}): ignoring event: #{inspect event}"
+    :noop
+  end
+
   # Handle Network Interface events coming in from SystemRegistry.
   def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
     event = handle_registry_event(event)
@@ -169,6 +194,21 @@ defmodule Nerves.Network.DHCPManager do
   ## Context: :dhcp
   defp consume(:dhcp, :ifup, state), do: state
 
+  defp consume(:dhcp, {:deconfig, _info}, state), do: state
+
+  defp consume(:dhcp, {:bound, info}, state) do
+    state
+      |> configure(info)
+      |> goto_context(:up)
+  end
+
+  defp consume(:dhcp, {:leasefail, _info}, state) do
+    dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
+    %{state | dhcp_retry_timer: dhcp_retry_timer}
+      |> stop_udhcpc
+      |> goto_context(:up)
+  end
+
   defp consume(:dhcp, :ifdown, state) do
     state
       |> stop_udhcpc
@@ -212,6 +252,13 @@ defmodule Nerves.Network.DHCPManager do
     state = stop_udhcpc(state)
     {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
     %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
+  end
+
+  @spec configure(t, Types.udhcp_info) :: t
+  defp configure(state, info) do
+    :ok = Nerves.NetworkInterface.setup(state.ifname, info)
+    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
+    state
   end
 
   @spec deconfigure(t) :: t
