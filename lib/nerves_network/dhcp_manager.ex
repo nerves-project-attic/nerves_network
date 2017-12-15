@@ -231,6 +231,15 @@ defmodule Nerves.Network.DHCPManager do
       |> goto_context(:down)
   end
 
+  defp consume(:up, {:renew, info}, state) do
+    state
+    |> configure(info)
+
+    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
+    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+    state
+  end
+
   # Catch-all handler for consume
   defp consume(context, event, state) do
     Logger.warn "Unhandled event #{inspect event} for context #{inspect context} in consume/3."
