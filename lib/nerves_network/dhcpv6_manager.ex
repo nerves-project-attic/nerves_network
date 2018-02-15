@@ -231,12 +231,6 @@ defmodule Nerves.Network.DHCPv6Manager do
       |> configure(state, info)
       |> goto_context(:up)
   end
-  defp consume(:up, {:rebind, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :rebind info: #{inspect info}" end
-    :no_resolv_conf
-      |> configure(state, info)
-      |> goto_context(:up)
-  end
 
   defp consume(:up, {:release, info}, state) do
     Logger.debug fn -> "#{__MODULE__}: consume :release info: #{inspect info}" end
