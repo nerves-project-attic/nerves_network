@@ -160,10 +160,6 @@ defmodule Nerves.Network.Dhclient do
     {:noreply, state}
   end
 
-  defp notify_dhclient(ifname, event, config, state) do
-    {:noreply, state}
-  end
-
   #Handling informational debug prints from the dhclient
   defp handle_dhclient([message], state) do
     Logger.debug fn -> "#{__MODULE__} handle_dhclient args = #{inspect message} state = #{inspect state}" end
