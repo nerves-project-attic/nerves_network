@@ -54,6 +54,11 @@ defmodule Nerves.Network.StaticManager do
     {:noreply, s}
   end
 
+  def handle_info(event, s) do
+    Logger.debug "StaticManager(#{s.ifname}): ignoring event: #{inspect event}"
+    {:noreply, s}
+  end
+
   @spec handle_registry_event({Nerves.NetworkInterface, atom, %{ifname: Types.ifname, is_lower_up: boolean}}) :: Types.ifevent
   defp handle_registry_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
     Logger.info "StaticManager(#{ifname}) network_interface ifadded"
@@ -105,8 +110,7 @@ defmodule Nerves.Network.StaticManager do
     :ok = Nerves.NetworkInterface.ifup(state.ifname)
     {:ok, status} = Nerves.NetworkInterface.status state.ifname
     notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
-
-    state |> goto_context(:down)
+    goto_context(state, :down)
   end
 
   ## Context: :down

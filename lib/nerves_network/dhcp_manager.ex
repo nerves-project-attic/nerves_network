@@ -23,12 +23,12 @@ defmodule Nerves.Network.DHCPManager do
   state and state machine state.
   """
   @type t :: %__MODULE__{
-    context: context,
+    context: context | nil,
     ifname: Types.ifname | nil,
     settings: dhcp_settings,
     dhcp_pid: GenServer.server() | nil,
-    dhcp_retry_interval: integer,
-    dhcp_retry_timer: reference
+    dhcp_retry_interval: integer | nil,
+    dhcp_retry_timer: reference | nil
   }
 
   @doc false
@@ -56,7 +56,7 @@ defmodule Nerves.Network.DHCPManager do
     {:ok, state}
   end
 
-  @spec handle_registry_event({Nerves.NetworkInterface, atom, %{ifname: Types.ifname}}) :: Types.ifevent
+  @spec handle_registry_event({Nerves.NetworkInterface | Nerves.Udhcpc, atom, %{ifname: Types.ifname}}) :: Types.ifevent
   defp handle_registry_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
     Logger.debug "DHCPManager(#{ifname}) network_interface ifadded"
     :ifadded
@@ -113,6 +113,11 @@ defmodule Nerves.Network.DHCPManager do
     {:renew, info}
   end
 
+  defp handle_registry_event({Nerves.Udhcpc, :leasefail, %{ifname: ifname} = info}) do
+    Logger.info "WiFiManager(#{ifname}): udhcp leasefail"
+    {:leasefail, info}
+  end
+
   defp handle_registry_event({Nerves.Udhcpc, event, %{ifname: ifname}}) do
     Logger.info "WiFiManager(#{ifname}): ignoring event: #{inspect event}"
     :noop
@@ -128,10 +133,11 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   # Handle Udhcpc events coming from SystemRegistry.
-  def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
-    Logger.debug "DHCPManager(#{s.ifname}) udhcpc #{inspect event}"
+  def handle_info({Nerves.Udhcpc, _, _info} = event, %{ifname: ifname} = s) do
+    {_, info} = event = handle_registry_event(event)
     scope(ifname) |> SystemRegistry.update(info)
-    s = consume(s.context, {event, info}, s)
+    s = consume(s.context, event, s)
+    Logger.debug "DHCPManager(#{s.ifname}) udhcpc #{inspect event}"
     {:noreply, s}
   end
 
@@ -154,7 +160,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   @typedoc "Event for the state machine."
-  @type event :: Types.ifevent | Nerves.Network.Udhcpc.event
+  @type event :: Types.ifevent | Nerves.Network.Udhcpc.event | {Nerves.Network.Udhcpc.event, Types.udhcp_info}
 
   @spec consume(context, event, t) :: t
   defp consume(_, :noop, state), do: state
@@ -162,11 +168,9 @@ defmodule Nerves.Network.DHCPManager do
   ## Context: :removed
   defp consume(:removed, :ifadded, state) do
     :ok = Nerves.NetworkInterface.ifup(state.ifname)
-
     {:ok, status} = Nerves.NetworkInterface.status state.ifname
     notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
-
-    state |> goto_context(:down)
+    goto_context(state, :down)
   end
 
   defp consume(:removed, :ifdown, state), do: state
@@ -213,14 +217,6 @@ defmodule Nerves.Network.DHCPManager do
     state
       |> stop_udhcpc
       |> goto_context(:down)
-  end
-
-  defp consume(:dhcp, {:deconfig, _info}, state), do: state
-
-  defp consume(:dhcp, {:bound, info}, state) do
-    state
-    |> configure(info)
-    |> goto_context(:up)
   end
 
   ## Context: :up
@@ -278,13 +274,6 @@ defmodule Nerves.Network.DHCPManager do
     state = stop_udhcpc(state)
     {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
     %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
-  end
-
-  @spec configure(t, Types.udhcp_info) :: t
-  defp configure(state, info) do
-    :ok = Nerves.NetworkInterface.setup(state.ifname, info)
-    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
-    state
   end
 
   @spec deconfigure(t) :: t
