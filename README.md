@@ -1,4 +1,4 @@
-# Nerves.Network
+# README
 [![Build Status](https://travis-ci.org/nerves-project/nerves_network.svg?branch=master)](https://travis-ci.org/nerves-project/nerves_network)
 [![Hex version](https://img.shields.io/hexpm/v/nerves_network.svg "Hex version")](https://hex.pm/packages/nerves_network)
 
