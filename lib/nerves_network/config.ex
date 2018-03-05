@@ -1,4 +1,4 @@
-defmodule Nerves.Network.Config  do
+defmodule Nerves.Network.Config do
   @moduledoc false
 
   use GenServer
@@ -15,10 +15,11 @@ defmodule Nerves.Network.Config  do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  @spec put(Types.ifname, Nerves.Network.setup_settings, atom) :: {:ok, {old :: map, new ::map}}
+  @spec put(Types.ifname(), Nerves.Network.setup_settings(), atom) ::
+          {:ok, {old :: map, new :: map}}
   def put(iface, config, priority \\ @priority) do
     scope(iface)
-    |> SR.update(config, [priority: priority])
+    |> SR.update(config, priority: priority)
   end
 
   def drop(iface, priority \\ @priority) do
@@ -27,14 +28,15 @@ defmodule Nerves.Network.Config  do
   end
 
   def init([]) do
-    SR.register
-    defaults =
-      Application.get_env(:nerves_network, :default, [])
-    Enum.each(defaults, fn({iface, config}) ->
+    SR.register()
+    defaults = Application.get_env(:nerves_network, :default, [])
+
+    Enum.each(defaults, fn {iface, config} ->
       iface
       |> to_string()
       |> put(config, :default)
     end)
+
     {:ok, %{}}
   end
 
@@ -49,37 +51,37 @@ defmodule Nerves.Network.Config  do
   end
 
   def update(new, old) do
-    {added, removed, modified} =
-      changes(new, old)
+    {added, removed, modified} = changes(new, old)
 
-    removed = Enum.map(removed, fn({k, _}) -> {k, %{}} end)
+    removed = Enum.map(removed, fn {k, _} -> {k, %{}} end)
     modified = added ++ modified
 
-    Enum.each(modified, fn({iface, settings}) ->
+    Enum.each(modified, fn {iface, settings} ->
       IFSupervisor.setup(iface, settings)
     end)
 
-    Enum.each(removed, fn({iface, _settings}) ->
+    Enum.each(removed, fn {iface, _settings} ->
       IFSupervisor.teardown(iface)
     end)
+
     new
   end
 
-  @spec scope(Types.ifname, append :: SR.scope) :: SR.scope
+  @spec scope(Types.ifname(), append :: SR.scope()) :: SR.scope()
   defp scope(iface, append \\ []) do
     @scope ++ [iface | append]
   end
 
   defp changes(new, old) do
-    added =
-      Enum.filter(new, fn({k, _}) -> Map.get(old, k) == nil end)
-    removed =
-      Enum.filter(old, fn({k, _}) -> Map.get(new, k) == nil end)
+    added = Enum.filter(new, fn {k, _} -> Map.get(old, k) == nil end)
+    removed = Enum.filter(old, fn {k, _} -> Map.get(new, k) == nil end)
+
     modified =
-      Enum.filter(new, fn({k, v}) ->
+      Enum.filter(new, fn {k, v} ->
         val = Map.get(old, k)
         val != nil and val != v
       end)
+
     {added, removed, modified}
   end
 end
