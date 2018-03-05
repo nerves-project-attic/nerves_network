@@ -354,6 +354,7 @@ defmodule Nerves.Network.WiFiManager do
   defp parse_settings(settings) when is_list(settings) do
     settings
     |> Map.new
+    |> Map.take([:ssid, :key_mgmt, :psk])
     |> parse_settings
   end
 
