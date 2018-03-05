@@ -32,7 +32,7 @@ defmodule Nerves.Network.Mixfile do
 
   defp package do
     %{files: ["lib", "src/*.[ch]", "test", "mix.exs", "README.md", "LICENSE", "CHANGELOG.md", "Makefile", "docs/*.md"],
-      maintainers: ["Frank Hunleth", "Justin Schneck"],
+      maintainers: ["Frank Hunleth", "Justin Schneck", "Connor Rigby"],
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/nerves-project/nerves_network"}}
   end
