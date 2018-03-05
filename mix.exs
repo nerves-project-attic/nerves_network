@@ -3,7 +3,7 @@ defmodule Nerves.Network.Mixfile do
 
   def project do
     [app: :nerves_network,
-     version: "0.3.6",
+     version: "0.3.7-dev",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -41,10 +41,11 @@ defmodule Nerves.Network.Mixfile do
     [
       {:system_registry, "~> 0.7"},
       {:nerves_network_interface, "~> 0.4.4"},
-      {:nerves_wpa_supplicant, "~> 0.3.0"},
+      {:nerves_wpa_supplicant, "~> 0.3.2"},
+
       {:elixir_make, "~> 0.4", runtime: false},
-      {:ex_doc, "~> 0.11", only: :dev},
-      {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
+      {:ex_doc, "~> 0.18", only: :dev, runtime: false},
+      {:dialyxir, "~> 0.5", only: :dev, runtime: false}
     ]
   end
 end
