@@ -1,4 +1,20 @@
 # Changelog
+## v0.3.7-dev
+  * Add typespecs for all the moving parts.
+    * Small refactors relating to this.
+  * Run Elixir code formatter.
+      * CI will now fail if the formatter fails.
+  * Add deprecation warning if users try to setup a network interface with
+    an atomized interface instead of a bitstring.
+    * [#17](https://github.com/nerves-project/nerves_network/issues/17)
+    * [#29](https://github.com/nerves-project/nerves_network/issues/29)
+    * [#41](https://github.com/nerves-project/nerves_network/issues/41)
+  * Changed `setup/2` API to not return delta from SystemRegistry
+    * [#23](https://github.com/nerves-project/nerves_network/issues/23)
+  * Changed `teardown/1` API similarly.
+  * Added docs for general usage.
+    * [#21](https://github.com/nerves-project/nerves_network/issues/21)
+    * [#19](https://github.com/nerves-project/nerves_network/issues/19)
 
 ## v0.3.6
   * Bug Fixes
