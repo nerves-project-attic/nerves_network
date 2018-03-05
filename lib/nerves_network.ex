@@ -21,14 +21,14 @@ defmodule Nerves.Network do
 
   @typedoc "Settings to `setup/2`"
   @type setup_setting ::
-    {:ipv4_address_method, :dhcp | :static | :linklocal} |
-    {:ipv4_address, Types.ip_address} |
-    {:ipv4_subnet_mask, Types.ip_address} |
-    {:domain, String.t} |
-    {:nameservers, [Types.ip_address]} |
-    {:ssid, String.t} |
-    {:key_mgmt, :"WPA-PSK" | :NONE} |
-    {:psk, String.t}
+          {:ipv4_address_method, :dhcp | :static | :linklocal}
+          | {:ipv4_address, Types.ip_address()}
+          | {:ipv4_subnet_mask, Types.ip_address()}
+          | {:domain, String.t()}
+          | {:nameservers, [Types.ip_address()]}
+          | {:ssid, String.t()}
+          | {:key_mgmt, :"WPA-PSK" | :NONE}
+          | {:psk, String.t()}
 
   @typedoc "Keyword List settings to `setup/2`"
   @type setup_settings :: [setup_setting]
@@ -48,20 +48,20 @@ defmodule Nerves.Network do
 
   See `t(#{__MODULE__}.setup_setting)` for more info.
   """
-  @spec setup(Types.ifname, setup_settings) :: :ok
+  @spec setup(Types.ifname(), setup_settings) :: :ok
   def setup(ifname, settings \\ []) do
-    Logger.debug "#{__MODULE__} setup(#{ifname}, #{inspect settings})"
-    {:ok, {_new, _old}} = Nerves.Network.Config.put ifname, settings
+    Logger.debug("#{__MODULE__} setup(#{ifname}, #{inspect(settings)})")
+    {:ok, {_new, _old}} = Nerves.Network.Config.put(ifname, settings)
     :ok
   end
 
   @doc """
   Stop all control of `ifname`
   """
-  @spec teardown(Types.ifname) :: :ok
+  @spec teardown(Types.ifname()) :: :ok
   def teardown(ifname) do
-    Logger.debug "#{__MODULE__} teardown(#{ifname})"
-    {:ok, {_new, _old}} = Nerves.Network.Config.drop ifname
+    Logger.debug("#{__MODULE__} teardown(#{ifname})")
+    {:ok, {_new, _old}} = Nerves.Network.Config.drop(ifname)
     :ok
   end
 
@@ -69,7 +69,7 @@ defmodule Nerves.Network do
   Convenience function for returning the current status of a network interface
   from SystemRegistry.
   """
-  @spec status(Types.ifname) :: Nerves.NetworkInterface.Worker.status | nil
+  @spec status(Types.ifname()) :: Nerves.NetworkInterface.Worker.status() | nil
   def status(ifname) do
     SystemRegistry.match(:_)
     |> get_in([:state, :network_interface, ifname])
@@ -78,9 +78,9 @@ defmodule Nerves.Network do
   @doc """
   If `ifname` is a wireless LAN, scan for access points.
   """
-  @spec scan(Types.ifname) :: [String.t] | {:error, any}
+  @spec scan(Types.ifname()) :: [String.t()] | {:error, any}
   def scan(ifname) do
-    Nerves.Network.IFSupervisor.scan ifname
+    Nerves.Network.IFSupervisor.scan(ifname)
   end
 
   @doc """
@@ -96,9 +96,9 @@ defmodule Nerves.Network do
       config :nerves_network,
         regulatory_domain: "US"
   """
-  @spec set_regulatory_domain(String.t) :: :ok
+  @spec set_regulatory_domain(String.t()) :: :ok
   def set_regulatory_domain(country) do
-    Logger.warn "Regulatory domain currently can only be updated on WiFi device addition."
+    Logger.warn("Regulatory domain currently can only be updated on WiFi device addition.")
     Application.put_env(:nerves_network, :regulatory_domain, country)
   end
 end
