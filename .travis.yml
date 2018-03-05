@@ -4,10 +4,10 @@ sudo: required
 dist: trusty
 
 otp_release:
-    - 19.2
+    - 20.2
 
 env:
-    - ELIXIR_VERSION=1.4.5
+    - ELIXIR_VERSION=1.6.2
 
 before_install:
     - sudo apt-get update -qq
@@ -22,3 +22,4 @@ script:
     - mix local.hex --force
     - mix deps.get
     - mix test
+    - mix format --check-formatted
