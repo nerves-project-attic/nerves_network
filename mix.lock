@@ -1,8 +1,8 @@
 %{
   "dialyxir": {:hex, :dialyxir, "0.5.1", "b331b091720fd93e878137add264bac4f644e1ddae07a70bf7062c7862c4b952", [:mix], [], "hexpm"},
-  "earmark": {:hex, :earmark, "1.2.3", "206eb2e2ac1a794aa5256f3982de7a76bf4579ff91cb28d0e17ea2c9491e46a4", [:mix], [], "hexpm"},
+  "earmark": {:hex, :earmark, "1.2.4", "99b637c62a4d65a20a9fb674b8cffb8baa771c04605a80c911c4418c69b75439", [:mix], [], "hexpm"},
   "elixir_make": {:hex, :elixir_make, "0.4.1", "6628b86053190a80b9072382bb9756a6c78624f208ec0ff22cb94c8977d80060", [:mix], [], "hexpm"},
-  "ex_doc": {:hex, :ex_doc, "0.16.2", "3b3e210ebcd85a7c76b4e73f85c5640c011d2a0b2f06dcdf5acdb2ae904e5084", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, repo: "hexpm", optional: false]}], "hexpm"},
+  "ex_doc": {:hex, :ex_doc, "0.18.3", "f4b0e4a2ec6f333dccf761838a4b253d75e11f714b85ae271c9ae361367897b7", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, repo: "hexpm", optional: false]}], "hexpm"},
   "nerves_network_interface": {:hex, :nerves_network_interface, "0.4.4", "200b1a84bc1a7fdeaf3a1e0e2d4e9b33e240b034e73f39372768d43f8690bae0", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
   "nerves_wpa_supplicant": {:hex, :nerves_wpa_supplicant, "0.3.2", "19dc7e1248336e7f542b11b2b857ceb5b088d3eb41a6ca75b7b76628dcf67aad", [:make, :mix], [{:elixir_make, "~> 0.3", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
   "system_registry": {:hex, :system_registry, "0.7.0", "cd3aaf2c15392fa60f93869dde49f536fcf60e54f3b15db737e7d4ebcac108f4", [:mix], [], "hexpm"},
