@@ -10,7 +10,7 @@ defmodule Nerves.Network.Mixfile do
      compilers: [:elixir_make] ++ Mix.compilers,
      make_clean: ["clean"],
      deps: deps(),
-     docs: [extras: ["README.md"]],
+     docs: [extras: ["README.md"] ++ Path.wildcard("docs/*.md")],
      package: package(),
      description: description()
     ]
@@ -31,7 +31,7 @@ defmodule Nerves.Network.Mixfile do
   end
 
   defp package do
-    %{files: ["lib", "src/*.[ch]", "test", "mix.exs", "README.md", "LICENSE", "CHANGELOG.md", "Makefile"],
+    %{files: ["lib", "src/*.[ch]", "test", "mix.exs", "README.md", "LICENSE", "CHANGELOG.md", "Makefile", "docs/*.md"],
       maintainers: ["Frank Hunleth", "Justin Schneck"],
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/nerves-project/nerves_network"}}
