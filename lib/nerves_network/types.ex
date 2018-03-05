@@ -9,7 +9,7 @@ defmodule Nerves.Network.Types do
 
   # Please move this innto Nerves.NetworkInterface.
   @typedoc "Event from Nerves.NetworkInterface"
-  @type ifevent :: :ifadded | :ifremoved | :ifmoved | :ifup | :ifdown | :noop | :retry_ifadded
+  @type ifevent :: :ifadded | :ifremoved | :ifmoved | :ifup | :ifdown | :noop
 
   @typedoc "Atom for the context state machine."
   @type interface_context :: :removed | :retry_add | :down | :up

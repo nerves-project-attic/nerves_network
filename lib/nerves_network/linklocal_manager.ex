@@ -103,9 +103,8 @@ defmodule Nerves.Network.LinkLocalManager do
   ## Context: :removed
   defp consume(:removed, :ifadded, state) do
     :ok = Nerves.NetworkInterface.ifup(state.ifname)
-    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
+    {:ok, status} = Nerves.NetworkInterface.status state.ifname
     notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
-
     goto_context(state, :down)
   end
 

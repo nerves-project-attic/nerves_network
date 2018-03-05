@@ -222,7 +222,7 @@ defmodule Nerves.Network.WiFiManager do
     :ok = Nerves.NetworkInterface.ifup(state.ifname)
     {:ok, status} = Nerves.NetworkInterface.status state.ifname
     notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
-    state |> goto_context(:down)
+    goto_context(state, :down)
   end
 
   defp consume(:removed, :ifdown, state), do: state

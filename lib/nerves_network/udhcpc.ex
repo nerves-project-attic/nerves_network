@@ -61,7 +61,7 @@ defmodule Nerves.Network.Udhcpc do
 
   def init(ifname) do
     priv_path = :code.priv_dir(:nerves_network)
-    port_path = "#{priv_path}/udhcpc_wrapper"
+    port_path = '#{priv_path}/udhcpc_wrapper'
     args = ["udhcpc",
             "--interface", ifname,
             "--script", port_path,
@@ -105,7 +105,7 @@ defmodule Nerves.Network.Udhcpc do
   @type udhcpc_wrapper_event :: [...] # we can do better.
 
   @typedoc "Event from the udhcpc server to be sent via SystemRegistry."
-  @type event :: :deconfig | :bound | :renew | :leasefail | :nak
+  @type event :: :deconfig | :bound | :renew | :leasefail | :nak | :dhcp_retry
 
   @spec handle_udhcpc(udhcpc_wrapper_event, state) :: {:noreply, state}
   defp handle_udhcpc(["deconfig", ifname | _rest], state) do
