@@ -58,7 +58,9 @@ defmodule Nerves.Network.Config do
     Enum.each(modified, fn {iface, settings} ->
       # TODO(Connor): Maybe we should define a behaviour for
       # Config changes for each of the managers?
-      :ok = IFSupervisor.teardown(iface)
+
+      # Don't match on teardown since it might not actually be up yet.
+      IFSupervisor.teardown(iface)
       {:ok, _} = IFSupervisor.setup(iface, settings)
     end)
 
