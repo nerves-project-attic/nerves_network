@@ -52,16 +52,18 @@ defmodule Nerves.Network.Config do
 
   def update(new, old) do
     {added, removed, modified} = changes(new, old)
-
     removed = Enum.map(removed, fn {k, _} -> {k, %{}} end)
     modified = added ++ modified
 
     Enum.each(modified, fn {iface, settings} ->
-      IFSupervisor.setup(iface, settings)
+      # TODO(Connor): Maybe we should define a behaviour for
+      # Config changes for each of the managers?
+      :ok = IFSupervisor.teardown(iface)
+      {:ok, _} = IFSupervisor.setup(iface, settings)
     end)
 
     Enum.each(removed, fn {iface, _settings} ->
-      IFSupervisor.teardown(iface)
+      :ok = IFSupervisor.teardown(iface)
     end)
 
     new
