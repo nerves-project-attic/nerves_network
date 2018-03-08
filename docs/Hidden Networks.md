@@ -1,14 +1,15 @@
 # Connecting to a Hidden Wireless Network
-Connecting to a hidden network is no different that connecting to a
+Connecting to a hidden network is no different than connecting to a
 normal broadcasting network, but it has some caveats.
 
 ```elixir
-  :ok = Network.setup("wlan0", [ssid: "hidden_ssid", psk: "super_secret", key_mgmt: "WPA-PSK"])
-  {:ok, _} = Elixir.Registry.register(Nerves.Udhcpc, interface, [])
-  {:ok, _} = Elixir.Registry.register(Nerves.WpaSupplicant, interface, [])
+  interface = "wlan0"
+  :ok = Network.setup(interface, [ssid: "hidden_ssid", psk: "super_secret", key_mgmt: "WPA-PSK"])
+  {:ok, _} = Registry.register(Nerves.Udhcpc, interface, [])
+  {:ok, _} = Registry.register(Nerves.WpaSupplicant, interface, [])
   :ok = receive do
     {Nerves.WpaSupplicant, :"CTRL-EVENT-NETWORK-NOT-FOUND", _} -> {:error, "network not found"}
-    {Nerves.Udhcpc, :bound, %{ifname: "wlan0"}} -> :ok
+    {Nerves.Udhcpc, :bound, %{ifname: ^interface}} -> :ok
   end
 ```
 
