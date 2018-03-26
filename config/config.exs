@@ -24,4 +24,9 @@ config :nerves_network, :dhclient,
     pid_file:   "/root/dhclient6.pid"
   ]
 
+config :nerves_network, :resolver,
+  [
+    resolvconf_file: "/tmp/resolv.conf"
+  ]
+
 
