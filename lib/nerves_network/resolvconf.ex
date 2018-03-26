@@ -16,6 +16,7 @@ defmodule Nerves.Network.Resolvconf do
   @typedoc "Settings for resolvconf"
   @type ifmap :: %{
     domain: String.t,
+    search: String.t,
     nameservers: [Types.ip_address]
   }
 
@@ -92,6 +93,22 @@ defmodule Nerves.Network.Resolvconf do
     GenServer.call(resolv_conf, :clear_all)
   end
 
+  @doc """
+  Read current settings in "/etc/resolv.conf".
+  """
+  @spec settings(resolvconf, Types.ifname) :: ifmap
+  def settings(resolv_conf, ifname) do
+    GenServer.call(resolv_conf, {:settings, ifname})
+  end
+
+  @doc """
+  Read current settings in "/etc/resolv.conf".
+  """
+  @spec settings(Types.ifname) :: ifmap
+  def settings(ifname) do
+    GenServer.call(__MODULE__, {:settings, ifname})
+  end
+
   ## GenServer
 
   @typedoc "State of the server."
@@ -112,6 +129,11 @@ defmodule Nerves.Network.Resolvconf do
   def handle_call({:set_nameservers, ifname, nameservers}, _from, state) do
     state = put_in(state[ifname].nameservers, nameservers)
     write_resolvconf(state)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:settings, ifname}, _from, state) do
+    state = read_resolvconf(state)
     {:reply, :ok, state}
   end
 
@@ -148,14 +170,12 @@ defmodule Nerves.Network.Resolvconf do
   end
   defp nameserver_text(_), do: ""
 
-  @spec write_resolvconf(%{filename: Path.t, ifmap: ifmap | map}) :: :ok
-  defp domain6_text({_ifname, %{:ipv6_domain => domain}}) when domain != "", do: "search #{domain}\n"
-  defp domain6_text(_), do: ""
   defp nameserver6_text({_ifname, %{:ipv6_nameservers => nslist}}) do
     for ns <- nslist, do: "nameserver #{ns}\n"
   end
   defp nameserver6_text(_), do: ""
 
+  @spec write_resolvconf(%{filename: Path.t, ifmap: ifmap | map}) :: :ok
   defp write_resolvconf(state) do
     Logger.debug fn -> "#{__MODULE__}: write_resolvconf state = #{inspect state}" end
 
@@ -167,5 +187,55 @@ defmodule Nerves.Network.Resolvconf do
     nameservers6 = Enum.map(state.ifmap, &nameserver6_text/1)
 
     File.write!(state.filename, domains ++ nameservers ++ nameservers6)
+  end
+
+
+  @spec entry_to_map(String.t, String.t, ifmap) :: ifmap
+  #domain and search entries are mutually exclusive man (5) resolv.conf. The last entry in the resolv.conf file wins
+  defp entry_to_map("domain", value, _map), do: %{search: value}
+  defp entry_to_map("search", value, _map), do: %{search: value}
+  defp entry_to_map("nameserver", value, map) do
+    nameservers = map[:"nameservers"]
+    case nameservers do
+      nil -> %{nameservers: [value]}
+      # We are doing it slow way to preserve the order of occurrence of nameserver entries - up to 3 such entries are supported
+      _ -> %{nameservers: nameservers ++ [value]}
+    end
+  end
+  defp entry_to_map(_, value, _map), do: %{}
+
+  @spec split_line(String.t, ifmap) :: ifmap
+  defp split_line(line, map) do
+     Logger.debug fn -> "#{__MODULE__}: line= #{inspect line}; map = #{inspect map}" end
+    [entry, value] =
+      case String.split(line, ~r{\s+}, parts: 2) do
+        [entry, value] -> [entry, value]
+        _ -> ["", ""]
+      end
+     map = Map.merge(map, entry_to_map(entry, value, map))
+     Logger.debug fn -> "#{__MODULE__}: map = #{inspect map}" end
+    map
+  end
+
+  @spec read_resolvconf(ifmap) :: ifmap
+  def read_resolvconf(state) do
+    Logger.debug fn -> "#{__MODULE__}: read_resolv_conf" end
+
+    {:ok, data} = File.read(state.filename)
+
+    lines =
+      data
+        |> String.split("\n")
+
+    Logger.debug fn -> "#{__MODULE__}: data    = #{inspect data}" end
+    Logger.debug fn -> "#{__MODULE__}: strings = #{inspect lines}" end
+
+    #We want each entry in the resolv.conf file to be split into ["key", "value"]
+    map =
+      Enum.reduce(lines, %{}, fn(x, map) -> split_line(x, map) end)
+
+    Logger.debug fn -> "#{__MODULE__}: map = #{inspect map}" end
+
+    Map.merge(state, map)
   end
 end
