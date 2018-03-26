@@ -43,11 +43,13 @@ defmodule Nerves.Network.Resolvconf do
   options are available:
 
     * `:domain` - the local domain name
+    * `:search` - a search list of domains :domain and :search are mutually exclusive the last in the resolv.conf file wins
+                  search is always put last
     * `:nameservers` - a list of IP addresses of name servers
 
   Options can be specified either as a keyword list or as a map. E.g.,
 
-    %{domain: "example.com", nameservers: ["8.8.8.8", "8.8.4.4"]}
+    %{domain: "example.com", search: "example.com ipv6.example.com", nameservers: ["8.8.8.8", "8.8.4.4"]}
   """
   @spec setup(resolvconf, Types.ifname, Nerves.Network.setup_settings | Types.udhcp_info) :: :ok
   def setup(resolv_conf, ifname, options) when is_list(options) do
@@ -126,6 +128,12 @@ defmodule Nerves.Network.Resolvconf do
     {:reply, :ok, state}
   end
 
+  def handle_call({:set_search, ifname, domains}, _from, state) do
+    state = put_in(state[ifname].search, domains)
+    write_resolvconf(state)
+    {:reply, :ok, state}
+  end
+
   def handle_call({:set_nameservers, ifname, nameservers}, _from, state) do
     state = put_in(state[ifname].nameservers, nameservers)
     write_resolvconf(state)
@@ -133,8 +141,14 @@ defmodule Nerves.Network.Resolvconf do
   end
 
   def handle_call({:settings, ifname}, _from, state) do
-    state = read_resolvconf(state)
-    {:reply, :ok, state}
+    state  = read_resolvconf(ifname, state)
+    #Elixir.Nerves.Network.Resolvconf: state = %{filename: "/home/motyl/resolv.conf", ifmap: %{"ens33" => %{domain: "eur.gad.schneider-electric.com", ifname: "ens33", ipv4_address: "10.216.251.72", ipv4_broadcast: "", ipv4_gateway: "10.216.251.1", ipv4_subnet_mask: "255.255.255.128", nameservers: ["10.156.118.9", "10.198.90.15"]}}, nameservers: ["10.156.118.9", "10.198.90.15"], search: "eur.gad.schneider-electric.com"}; retval = nil
+    ifmap = state[:ifmap]
+    Logger.debug fn -> "#{__MODULE__}: state = #{inspect state};" end
+    Logger.debug fn -> "#{__MODULE__}: ifmap = #{inspect ifmap}" end
+    retval = ifmap[ifname]
+    Logger.debug fn -> "#{__MODULE__}: retval = #{inspect retval}" end
+    {:reply, {:ok, retval}, state}
   end
 
   def handle_call({:setup, ifname, ifentry}, _from, state) do
@@ -202,7 +216,7 @@ defmodule Nerves.Network.Resolvconf do
       _ -> %{nameservers: nameservers ++ [value]}
     end
   end
-  defp entry_to_map(_, value, _map), do: %{}
+  defp entry_to_map(_, _value, _map), do: %{}
 
   @spec split_line(String.t, ifmap) :: ifmap
   defp split_line(line, map) do
@@ -217,8 +231,8 @@ defmodule Nerves.Network.Resolvconf do
     map
   end
 
-  @spec read_resolvconf(ifmap) :: ifmap
-  def read_resolvconf(state) do
+  @spec read_resolvconf(Types.ifname, ifmap) :: ifmap
+  def read_resolvconf(ifname, state) do
     Logger.debug fn -> "#{__MODULE__}: read_resolv_conf" end
 
     {:ok, data} = File.read(state.filename)
@@ -236,6 +250,11 @@ defmodule Nerves.Network.Resolvconf do
 
     Logger.debug fn -> "#{__MODULE__}: map = #{inspect map}" end
 
-    Map.merge(state, map)
+    ifmap1 = state[:ifmap]
+    config =
+    ifmap1[ifname]
+      |> Map.merge(map)
+
+    Map.merge(state, %{ifmap: %{ifname => config}})
   end
 end
