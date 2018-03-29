@@ -69,6 +69,25 @@ defmodule Nerves.Network.Resolvconf do
   end
 
   @doc """
+  Sets the static (manually configured) search domains. The 'static' search domains take recedence over ones
+  set by DHCPv4 and DHCPv6 clients.
+  """
+  @spec set_static_domains(resolvconf, Types.ifname, list(String.t)) :: :ok
+  def set_static_domains(resolv_conf, ifname, domains) do
+    GenServer.call(resolv_conf, {:set_static_domains, ifname, domains})
+  end
+
+  @spec set_static_nameservers(resolvconf, Types.ifname, list(String.t)) :: :ok
+  def set_static_nameservers(resolv_conf, ifname, servers) do
+    GenServer.call(resolv_conf, {:set_static_nameservers, ifname, servers})
+  end
+
+  @spec set_static_nameservers(Types.ifname, list(String.t)) :: :ok
+  def set_static_nameservers(ifname, servers) do
+    GenServer.call(__MODULE__, {:set_static_nameservers, ifname, servers})
+  end
+
+  @doc """
   Set the nameservers that were configured on this interface. These
   will be added to "/etc/resolv.conf" and replace any entries that
   were previously added for the specified interface.
@@ -128,6 +147,28 @@ defmodule Nerves.Network.Resolvconf do
     {:reply, :ok, state}
   end
 
+  def handle_call({:set_static_domains, ifname, domains}, _from, state) do
+    Logger.debug fn -> "#{__MODULE__}: handle_call: :set_static_domains old_state = #{inspect state}" end
+    new_ifentry = state.ifmap
+                    |> Map.get(ifname, %{})
+                    |> Map.merge(%{:static_domains => domains})
+    state = %{state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
+    Logger.debug fn -> "#{__MODULE__}: handle_call: :set_static_domains new_state = #{inspect state}" end
+    write_resolvconf(state)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:set_static_nameservers, ifname, servers}, _from, state) do
+    Logger.debug fn -> "#{__MODULE__}: handle_call: :set_static_nameservers old_state = #{inspect state}" end
+    new_ifentry = state.ifmap
+                    |> Map.get(ifname, %{})
+                    |> Map.merge(%{:static_nameservers => servers})
+    state = %{state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
+    Logger.debug fn -> "#{__MODULE__}: handle_call: :set_static_domains new_state = #{inspect state}" end
+    write_resolvconf(state)
+    {:reply, :ok, state}
+  end
+
   def handle_call({:set_search, ifname, domains}, _from, state) do
     state = put_in(state[ifname].search, domains)
     write_resolvconf(state)
@@ -172,16 +213,38 @@ defmodule Nerves.Network.Resolvconf do
     {:reply, :ok, state}
   end
 
+  defp append_domain(search_string, ""), do: search_string
+  defp append_domain(search_string, "\n"), do: search_string <> "\n"
+  defp append_domain(search_string, domain) do
+    search_string <> " #{domain}"
+  end
+
   @spec domain_text({Types.ifname, ifmap} | any) :: String.t
+  defp domain_text({_ifname, ifmap = %{:static_domains => static_domains}}) when is_list(static_domains) and static_domains != nil do
+    ipv4_domain_string    = ifmap[:domain] || ""
+    ipv6_domain_string    = ifmap[:ipv6_domain] || ""
+    static_domains_string = Enum.join(static_domains, " ")
+    "search  #{static_domains_string}"
+      |> append_domain(ipv4_domain_string)
+      |> append_domain(ipv6_domain_string)
+      |> String.trim()
+      |> append_domain("\n")
+  end
   defp domain_text({_ifname, %{:domain => domain, :ipv6_domain => ipv6_domain}}) when domain != "" or ipv6_domain != "", do: "search #{domain} #{ipv6_domain}\n"
   defp domain_text({_ifname, %{:domain => domain}}) when domain != "", do: "search #{domain}\n"
   defp domain_text({_ifname, %{:ipv6_domain => domain}}) when domain != "", do: "search #{domain}\n"
   defp domain_text(_), do: ""
 
+
   @spec nameserver_text({Types.ifname, ifmap} | any) :: [String.t]
   defp nameserver_text({_ifname, %{:nameservers => nslist}}) do
     for ns <- nslist, do: "nameserver #{ns}\n"
   end
+  @spec static_nameserver_text({Types.ifname, ifmap} | any) :: [String.t]
+  defp static_nameserver_text({_ifname, %{:static_nameservers => nslist}}) do
+    for ns <- nslist, do: "nameserver #{ns}\n"
+  end
+  defp static_nameserver_text(_), do: ""
   defp nameserver_text(_), do: ""
 
   defp nameserver6_text({_ifname, %{:ipv6_nameservers => nslist}}) do
@@ -189,18 +252,32 @@ defmodule Nerves.Network.Resolvconf do
   end
   defp nameserver6_text(_), do: ""
 
+  #By default there are 3 nameservers supported by the Linux resolver. A typical configuration (for IPv4/IPv6 dual stack) would look like this:
+  #/etc/resolv.conf:
+  #  nameserver 8.8.8.8
+  #  nameserver 8.8.4.4
+  #  nameserver 2001:4860:4860::8888
+  #  nameserver 2001:4860:4860::8844
+  #
+  # We allow as well to manually using the :static_nameservers entry in the state. Those will be added to the /etc/resolv.conf file
+  # prior to IPv4 and IPv6 nameserver entries in order to take precedence. This is to support 'static' IPv4/IPv6 settings.
+  # The feature can be used to provide a 'static' nameserver entry on the top of ones dynamically configured by either DHCPv4 and/or DHCPv6.
   @spec write_resolvconf(%{filename: Path.t, ifmap: ifmap | map}) :: :ok
   defp write_resolvconf(state) do
     Logger.debug fn -> "#{__MODULE__}: write_resolvconf state = #{inspect state}" end
 
-    #IPv4 part
     domains     = Enum.map(state.ifmap, &domain_text/1)
+
+    #Static Nameservers
+    static_nameservers =  Enum.map(state.ifmap, &static_nameserver_text/1)
+
+    #IPv4 part
     nameservers = Enum.map(state.ifmap, &nameserver_text/1)
 
-    #IPv6 part
+    #IPv6 part - must preceed the IPv4 nameservers
     nameservers6 = Enum.map(state.ifmap, &nameserver6_text/1)
 
-    File.write!(state.filename, domains ++ nameservers ++ nameservers6)
+    File.write!(state.filename, domains ++ static_nameservers ++ nameservers ++ nameservers6)
   end
 
 
@@ -250,11 +327,13 @@ defmodule Nerves.Network.Resolvconf do
 
     Logger.debug fn -> "#{__MODULE__}: map = #{inspect map}" end
 
-    ifmap1 = state[:ifmap]
-    config =
-    ifmap1[ifname]
+    ifmap_old  = state[:ifmap]
+    config_old = ifmap_old[ifname] || %{}
+
+    config_new =
+    config_old
       |> Map.merge(map)
 
-    Map.merge(state, %{ifmap: %{ifname => config}})
+    Map.merge(state, %{ifmap: %{ifname => config_new}})
   end
 end
