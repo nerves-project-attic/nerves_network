@@ -17,8 +17,8 @@ defmodule Nerves.Network.Resolvconf do
   @type ifmap :: %{
     domain: String.t,
     search: String.t,
-    nameservers: [Types.ip_address]
-    static_nameservers: [Types.ip_address]
+    nameservers: [Types.ip_address],
+    static_nameservers: [Types.ip_address],
     ipv6_nameservers: [Types.ip_address]
   }
 
