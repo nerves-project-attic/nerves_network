@@ -198,7 +198,7 @@ defmodule Nerves.Network.Resolvconf do
   #Elixir.Nerves.Network.Resolvconf: state = %{filename: "/home/motyl/resolv.conf", ifmap: %{"ens33" => %{domain: "eur.gad.schneider-electric.com", ifname: "ens33", ipv4_address: "10.216.251.72", ipv4_broadcast: "", ipv4_gateway: "10.216.251.1", ipv4_subnet_mask: "255.255.255.128", nameservers: ["10.156.118.9", "10.198.90.15"]}}, nameservers: ["10.156.118.9", "10.198.90.15"], search: "eur.gad.schneider-electric.com"}; retval = nil
   def handle_call({:settings, ifname}, _from, state) do
     state  = read_resolvconf(ifname, state)
-    {:reply, {:ok, state[:ifmap]}, state}
+    {:reply, {:ok, state[:ifmap][ifname]}, state}
   end
 
   def handle_call({:setup, ifname, ifentry}, _from, state) do
@@ -232,12 +232,15 @@ defmodule Nerves.Network.Resolvconf do
   defp domain_text({_ifname, ifmap = %{:static_domains => static_domains}}) when is_list(static_domains) and static_domains != nil do
     ipv4_domain_string    = ifmap[:domain] || ""
     ipv6_domain_string    = ifmap[:ipv6_domain] || ""
-    static_domains_string = Enum.join(static_domains, " ")
-    "search  #{static_domains_string}"
-      |> append_domain(ipv4_domain_string)
-      |> append_domain(ipv6_domain_string)
-      |> String.trim()
-      |> append_domain("\n")
+    case static_domains do
+      [] -> static_domains_string = Enum.join(static_domains, " ")
+        "search  #{static_domains_string}"
+         |> append_domain(ipv4_domain_string)
+          |> append_domain(ipv6_domain_string)
+         |> String.trim()
+         |> append_domain("\n")
+      _ -> ""
+    end
   end
   defp domain_text({_ifname, %{:domain => domain, :ipv6_domain => ipv6_domain}}) when domain != "" or ipv6_domain != "", do: "search #{domain} #{ipv6_domain}\n"
   defp domain_text({_ifname, %{:domain => domain}}) when domain != "", do: "search #{domain}\n"
