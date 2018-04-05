@@ -232,14 +232,15 @@ defmodule Nerves.Network.Resolvconf do
   defp domain_text({_ifname, ifmap = %{:static_domains => static_domains}}) when is_list(static_domains) and static_domains != nil do
     ipv4_domain_string    = ifmap[:domain] || ""
     ipv6_domain_string    = ifmap[:ipv6_domain] || ""
-    case static_domains do
-      [] -> static_domains_string = Enum.join(static_domains, " ")
+    if static_domains != [] do
+      static_domains_string = Enum.join(static_domains, " ")
         "search  #{static_domains_string}"
          |> append_domain(ipv4_domain_string)
-          |> append_domain(ipv6_domain_string)
+         |> append_domain(ipv6_domain_string)
          |> String.trim()
          |> append_domain("\n")
-      _ -> ""
+      else
+      ""
     end
   end
   defp domain_text({_ifname, %{:domain => domain, :ipv6_domain => ipv6_domain}}) when domain != "" or ipv6_domain != "", do: "search #{domain} #{ipv6_domain}\n"
