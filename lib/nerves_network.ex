@@ -25,7 +25,10 @@ defmodule Nerves.Network do
     {:ipv4_address, Types.ip_address} |
     {:ipv4_subnet_mask, Types.ip_address} |
     {:domain, String.t} |
+    {:search, String.t} |
+    {:static_domains, list(String.t)} |
     {:nameservers, [Types.ip_address]} |
+    {:ipv6_nameservers, [Types.ip_address]} |
     {:ssid, String.t} |
     {:key_mgmt, :"WPA-PSK" | :NONE} |
     {:psk, String.t}
