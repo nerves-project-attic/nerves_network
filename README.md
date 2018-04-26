@@ -103,12 +103,12 @@ Nerves.Network.setup "eth0", ipv4_address_method: :static,
 Nerves.Network.setup "usb0", ipv4_address_method: :linklocal
 ```
 
-# Using `nerves_network` with `bootloader`
+# Using `nerves_network` with `shoehorn`
 
-Set default network interface settings as described above. Then you can use [`bootloader`](https://github.com/nerves-project/bootloader) to start `nerves_network`:
+Set default network interface settings as described above. Then you can use [`shoehorn`](https://github.com/nerves-project/shoehorn) to start `nerves_network`:
 
 ```elixir
-config :bootloader,
+config :shoehorn,
   init: [:nerves_network],
   app: :your_app
 ```
