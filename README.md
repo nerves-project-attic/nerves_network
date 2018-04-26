@@ -83,7 +83,7 @@ If your WiFi network does not use a secret key, specify the `key_mgmt` to be
 see that project for more configuration options.
 
 **Note**
-`Nerves.Network.setup` stores your interface's configuration information with [`SystemRegistry`](https://github.com/nerves-project/system_registry), which ties the configuration to the calling process. As such, if the process that called `setup` terminates, the network interface will lose its configuration information and be torn down. You can avoid this by calling `setup` in your application's `start` function, or by configuring `nerves_network` using bootloader as described below.
+`Nerves.Network.setup` stores your interface's configuration information with [`SystemRegistry`](https://github.com/nerves-project/system_registry), which ties the configuration to the calling process. As such, if the process that called `setup` terminates, the network interface will lose its configuration information and be torn down. You can avoid this by calling `setup` in your application's `start` function, or by configuring `nerves_network` using shoehorn as described below.
 
 # Wired Networking
 
