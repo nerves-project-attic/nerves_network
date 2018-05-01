@@ -86,7 +86,14 @@ Nerves.Network.setup "wlan0", ssid: "my_accesspoint_name", key_mgmt: :"WPA-PSK",
 ```
 
 If your WiFi network does not use a secret key, specify the `key_mgmt` to be
-`:NONE`. Currently, wireless configuration passes almost unaltered to
+`:NONE`. 
+
+If your WiFi network is using `WEP` connect by running:
+```elixir
+  Nerves.Network.setup("wlan0", ssid: "wepnet", key_mgmt: :NONE, wep_key0: :"WEPSECRET", wep_tx_keyidx: 0)
+```
+
+Currently, wireless configuration passes almost unaltered to
 [wpa_supplicant.ex](https://github.com/nerves-project/nerves_wpa_supplicant), so
 see that project for more configuration options.
 
