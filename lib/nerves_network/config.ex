@@ -29,7 +29,7 @@ defmodule Nerves.Network.Config  do
 
   def init([]) do
     Logger.debug fn -> "#{__MODULE__}: init([])" end
-    SR.register
+    SR.register(hysteresis: 50, min_interval: 500)
     defaults =
       Application.get_env(:nerves_network, :default, [])
 
