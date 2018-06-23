@@ -9,7 +9,7 @@ defmodule Nerves.Network.Application do
     [resolvconf_file: resolvconf_file] = Application.get_env(:nerves_network, :resolver, [])
 
     children = [
-      supervisor(Registry, [:duplicate, Nerves.Udhcpc], id: Nerves.Udhcpc),
+      supervisor(Registry, [:duplicate, Nerves.Dhclientv4], id: Nerves.Dhclientv4),
       supervisor(Registry, [:duplicate, Nerves.Dhclient], id: Nerves.Dhclient),
       worker(Nerves.Network.Resolvconf, [resolvconf_file, [name: Nerves.Network.Resolvconf]]),
       supervisor(Nerves.Network.IFSupervisor, [[name: Nerves.Network.IFSupervisor]]),

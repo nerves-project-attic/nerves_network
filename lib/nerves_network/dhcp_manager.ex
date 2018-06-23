@@ -2,10 +2,11 @@ defmodule Nerves.Network.DHCPManager do
   use GenServer
   require Logger
   import Nerves.Network.Utils
-  alias Nerves.Network.Types
 
   @moduledoc false
 
+  # The current state machine state is called "context" to avoid confusion between server
+  # state and state machine state.
   defstruct context: :removed,
             ifname: nil,
             settings: nil,
@@ -13,38 +14,19 @@ defmodule Nerves.Network.DHCPManager do
             dhcp_retry_interval: 60_000,
             dhcp_retry_timer: nil
 
-  @typedoc "Settings for starting the server."
-  @type dhcp_settings :: Nerves.Network.setup_settings
-
-  @typep context :: Types.interface_context | :dhcp | :dhcp_retry
-
-  @typedoc """
-  The current state machine state is called "context" to avoid confusion between server
-  state and state machine state.
-  """
-  @type t :: %__MODULE__{
-    context: context,
-    ifname: Types.ifname | nil,
-    settings: dhcp_settings,
-    dhcp_pid: GenServer.server() | nil,
-    dhcp_retry_interval: integer,
-    dhcp_retry_timer: reference
-  }
-
-  @doc false
-  @spec start_link(Types.ifname, dhcp_settings, GenServer.options) :: GenServer.on_start
   def start_link(ifname, settings, opts \\ []) do
     Logger.debug fn -> "DHCPManager starting.... ifname: #{inspect ifname}; settings: #{inspect settings}" end
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
   def init({ifname, settings}) do
-    # Register for nerves_network_interface and udhcpc events
+    # Register for nerves_network_interface and dhclient events
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
-    {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
+    {:ok, _} = Registry.register(Nerves.Dhclientv4, ifname, [])
 
     state = %Nerves.Network.DHCPManager{settings: settings, ifname: ifname}
-    Logger.debug fn -> "#{__MODULE__}: initialising.... state: #{inspect state}" end
+    Logger.debug fn -> "DHCPManager initialising.... state: #{inspect state}" end
+    Logger.debug fn -> "#{__MODULE__}:   settings: #{inspect settings}" end
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
@@ -55,195 +37,205 @@ defmodule Nerves.Network.DHCPManager do
         state
       end
 
+    Logger.debug fn -> "DHCPManager initialising.... state: #{inspect state}" end
     {:ok, state}
   end
 
-  @spec handle_registry_event({Nerves.NetworkInterface, atom, %{ifname: Types.ifname}}) :: Types.ifevent
-  defp handle_registry_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
-    Logger.debug "DHCPManager(#{ifname}) network_interface ifadded"
+  def handle_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
+    Logger.debug fn -> "DHCPManager.EventHandler(#{ifname}) ifadded" end
     :ifadded
   end
-
   # :ifmoved occurs on systems that assign stable names to removable
   # interfaces. I.e. the interface is added under the dynamically chosen
   # name and then quickly renamed to something that is stable across boots.
-  defp handle_registry_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
-    Logger.debug "DHCPManager(#{ifname}) network_interface ifadded (moved)"
+  def handle_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifadded (moved)"
     :ifadded
   end
-
-  defp handle_registry_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
-    Logger.debug "DHCPManager(#{ifname}) network_interface ifremoved"
+  def handle_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
+    Logger.debug fn -> "DHCPManager.EventHandler(#{ifname}) ifremoved" end
     :ifremoved
   end
 
   # Filter out ifup and ifdown events
   # :is_up reports whether the interface is enabled or disabled (like by the wifi kill switch)
   # :is_lower_up reports whether the interface as associated with an AP
-  defp handle_registry_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}) do
-    Logger.debug "DHCPManager(#{ifname}) network_interface ifup"
+  def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}) do
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifup"
     :ifup
   end
-
-  defp handle_registry_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}) do
-    Logger.debug "DHCPManager(#{ifname}) network_interface ifdown"
+  def handle_event({Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}) do
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifdown"
     :ifdown
   end
 
-  defp handle_registry_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
-    Logger.debug "DHCPManager(#{ifname}): ignoring event: #{inspect event}"
+  # # DHCP events
+  # # :bound, :renew, :rebind, :nak
+
+
+  def handle_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
+    Logger.debug "DHCPManager.EventHandler(#{ifname}): ignoring event: #{inspect event}"
     :noop
   end
 
-  defp handle_registry_event({Nerves.Udhcpc, :bound, %{ifname: ifname} = info}) do
-    Logger.info "WiFiManager(#{ifname}): udhcp bound"
-    {:bound, info}
-  end
-
-  defp handle_registry_event({Nerves.Udhcpc, :deconfig, %{ifname: ifname} = info}) do
-    Logger.info "WiFiManager(#{ifname}): udhcp deconfig"
-    {:deconfig, info}
-  end
-
-  defp handle_registry_event({Nerves.Udhcpc, :nak, %{ifname: ifname} = info}) do
-    Logger.info "WiFiManager(#{ifname}): udhcp nak"
-    {:nak, info}
-  end
-
-  defp handle_registry_event({Nerves.Udhcpc, :renew, %{ifname: ifname} = info}) do
-    Logger.info "WiFiManager(#{ifname}): udhcp renew"
-    {:renew, info}
-  end
-
-  defp handle_registry_event({Nerves.Udhcpc, event, %{ifname: ifname}}) do
-    Logger.info "WiFiManager(#{ifname}): ignoring event: #{inspect event}"
-    :noop
-  end
-
-  # Handle Network Interface events coming in from SystemRegistry.
   def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
-    event = handle_registry_event(event)
+    Logger.debug fn -> "#{__MODULE__} handle_info: ifstate = #{inspect ifstate}" end
+    event = handle_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
-    Logger.debug "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
+    Logger.debug fn -> "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}" end
     {:noreply, s}
   end
 
-  # Handle Udhcpc events coming from SystemRegistry.
-  def handle_info({Nerves.Udhcpc, event, info}, %{ifname: ifname} = s) do
-    Logger.debug "DHCPManager(#{s.ifname}) udhcpc #{inspect event}"
+  #  info: %{domain_search: "ipv4.doman.name", ifname: "eth1", ipv4_address: "666::16/64", nameservers: ["fec0:0:0:1::7"]}
+  def handle_info({Nerves.Dhclientv4, event, info}, %{ifname: ifname} = s) do
+    Logger.debug fn -> "DHCPManager.EventHandler(#{s.ifname}) event: #{inspect event}; info: #{inspect info}" end
     scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
   end
 
-  # Comes from the timer.
-  def handle_info(:dhcp_retry, s) do
-    s = consume(s.context, :dhcp_retry, s)
-    {:noreply, s}
-  end
-
-  # Catch all.
   def handle_info(event, s) do
-    Logger.debug "DHCPManager(#{s.ifname}): ignoring event: #{inspect event}"
+    Logger.debug fn -> "DHCPManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}" end
     {:noreply, s}
   end
 
   ## State machine implementation
-  @spec goto_context(t, context) :: t
   defp goto_context(state, newcontext) do
     %Nerves.Network.DHCPManager{state | context: newcontext}
   end
 
-  @typedoc "Event for the state machine."
-  @type event :: Types.ifevent | Nerves.Network.Udhcpc.event
-
-  @spec consume(context, event, t) :: t
   defp consume(_, :noop, state), do: state
-
   ## Context: :removed
   defp consume(:removed, :ifadded, state) do
-    :ok = Nerves.NetworkInterface.ifup(state.ifname)
+    case Nerves.NetworkInterface.ifup(state.ifname) do
+      :ok ->
+        {:ok, status} = Nerves.NetworkInterface.status state.ifname
+        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
-    {:ok, status} = Nerves.NetworkInterface.status state.ifname
+        state
+          |> goto_context(:down)
+      {:error, _} ->
+        # The interface isn't quite up yet. Retry
+        Process.send_after self(), :retry_ifadded, 250
+        state
+          |> goto_context(:retry_add)
+    end
+  end
+  defp consume(:removed, :retry_ifadded, state), do: state
+  defp consume(:removed, :ifdown, state), do: state
+
+  ## Context: :retry_add
+  defp consume(:retry_add, :ifremoved, state) do
+    state
+      |> goto_context(:removed)
+  end
+  defp consume(:retry_add, :retry_ifadded, state) do
+    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
     notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
 
-    state |> goto_context(:down)
+    state
+      |> goto_context(:down)
   end
-
-  defp consume(:removed, :ifdown, state), do: state
 
   ## Context: :down
   defp consume(:down, :ifadded, state), do: state
-
   defp consume(:down, :ifup, state) do
     state
-      |> start_udhcpc
+      |> start_dhclient
       |> goto_context(:dhcp)
   end
-
   defp consume(:down, :ifdown, state) do
     state
-      |> stop_udhcpc
+      |> stop_dhclient
   end
-
   defp consume(:down, :ifremoved, state) do
     state
-      |> stop_udhcpc
+      |> stop_dhclient
       |> goto_context(:removed)
   end
 
   ## Context: :dhcp
   defp consume(:dhcp, :ifup, state), do: state
-
   defp consume(:dhcp, {:deconfig, _info}, state), do: state
 
   defp consume(:dhcp, {:bound, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :bound info: #{inspect info}" end
     state
       |> configure(info)
       |> goto_context(:up)
   end
 
+
   defp consume(:dhcp, {:leasefail, _info}, state) do
     dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
     %{state | dhcp_retry_timer: dhcp_retry_timer}
-      |> stop_udhcpc
+      |> stop_dhclient
       |> start_link_local
       |> goto_context(:up)
-  end
 
+  end
   defp consume(:dhcp, :ifdown, state) do
     state
-      |> stop_udhcpc
+      |> stop_dhclient
       |> goto_context(:down)
   end
 
   ## Context: :up
   defp consume(:up, :ifup, state), do: state
-
   defp consume(:up, :dhcp_retry, state) do
     state
-      |> start_udhcpc
+      |> start_dhclient
       |> goto_context(:dhcp)
   end
-
   defp consume(:up, :ifdown, state) do
     state
-      |> stop_udhcpc
+      |> stop_dhclient
       |> deconfigure
       |> goto_context(:down)
   end
+  defp consume(:up, {:leasefail, _info}, state), do: state
 
-  defp consume(:up, {:renew, info}, state) do
-    state
-    |> configure(info)
-
-    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
-    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
-    state
+  defp consume(:up, {:bound, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :bound info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
   end
 
-  defp consume(:up, {:leasefail, _info}, state), do: state
+  defp consume(:up, {:renew, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :renew info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
+  defp consume(:up, {:rebind, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :rebind info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
+  defp consume(:up, {:release, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :release info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
+  defp consume(:up, {:expire, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :expire info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
+  defp consume(:up, {:stop, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :stop info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
 
   # Catch-all handler for consume
   defp consume(context, event, state) do
@@ -251,20 +243,17 @@ defmodule Nerves.Network.DHCPManager do
     state
   end
 
-  @spec stop_udhcpc(t) :: t
-  defp stop_udhcpc(state) do
+  defp stop_dhclient(state) do
     if is_pid(state.dhcp_pid) do
-      Nerves.Network.Udhcpc.stop(state.dhcp_pid)
+      Nerves.Network.Dhclientv4.stop(state.dhcp_pid)
       %Nerves.Network.DHCPManager{state | dhcp_pid: nil}
     else
       state
     end
   end
-
-  @spec start_udhcpc(t) :: t
-  defp start_udhcpc(state) do
-    state = stop_udhcpc(state)
-    {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
+  defp start_dhclient(state) do
+    state = stop_dhclient(state)
+    {:ok, pid} = Nerves.Network.Dhclientv4.start_link({state.ifname, state.settings[:ipv4_dhcp]})
     %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
   end
 
@@ -277,19 +266,47 @@ defmodule Nerves.Network.DHCPManager do
     state
   end
 
-  @spec configure(t, Types.udhcp_info) :: t
-  defp configure(state, info) do
-    Logger.debug("DHCP state #{inspect state} #{inspect info}")
+  defp setup_iface(state, info) do
+    case Nerves.NetworkInterface.setup(state.ifname, info) do
+      :ok -> :ok
+      {:error, :eexist} -> :ok
+        #It may very often happen that at the renew time we would receive the lease of the very same IP address...
+        #In such a case whilst adding already existent IP address to the network interface we shall receive 'error exists'.
+        #It definitely is non-critical situation and actually confirms that we do not have to take any action.
+    end
+  end
 
-    :ok = Nerves.NetworkInterface.setup(state.ifname, info)
-    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
+  defp remove_old_ip(state, info) do
+    old_ip = info[:"old_ipv4_address"] || ""
+    new_ip = info[:"ipv4_address"] || ""
+
+    if old_ip == "" or new_ip == old_ip do
+      :ok
+    else
+      Logger.debug fn -> "Removing ipv4 address = #{inspect old_ip} from #{inspect state.ifname}" end
+      Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => old_ip})
+    end
+  end
+
+  defp configure(:no_resolv_conf, state, info) do
+    remove_old_ip(state, info)
+    :ok = setup_iface(state, info)
     state
   end
 
-  @spec deconfigure(t) :: t
+  defp configure(state, info) do
+    Logger.warn("DHCP state #{inspect state} #{inspect info}")
+
+    :ok = setup_iface(state, info)
+    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
+
+    # Show that the route has been updated
+    System.cmd("route", []) |> elem(0) |> Logger.error
+    state
+  end
+
   defp deconfigure(state) do
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
-
 end
