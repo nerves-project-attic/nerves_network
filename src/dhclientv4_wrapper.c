@@ -5,12 +5,12 @@
  ****************************************************************/
 
 /**
- * @file dhclient_wrapper.c
+ * @file dhclientv4_wrapper.c
  * @brief Wrapping calls to IDC's dhclient
- * @author Tomasz Kazimierz Motyl
+ * @author Alan Jackson
  * @e-mail tomasz.motyl@schneider-electric.com
  * @version 0.1
- * @date 2017-10-17
+ * @date 2018-06-23
  */
 
 #define _GNU_SOURCE
@@ -38,7 +38,7 @@
 
 
 #define DHCLIENT_PATH        "/sbin/dhclient"
-#define DHCLIENT_SCRIPT_PATH "/sbin/dhclient-script"
+// #define DHCLIENT_SCRIPT_PATH "/sbin/dhclient-script" 
 
 static pid_t child_pid;
 static int   exit_pipe_fd[2];
@@ -217,12 +217,12 @@ static const char * getenv_nonull(const char * restrict key)
     return result != NULL ? result : "";
 }
 
-static char *get_ip6_addr(char * restrict dest, char * restrict ip6_prefix, char * restrict ip6_address, char * restrict ip6_prefixlen)
+static char *get_ip_addr(char * restrict dest, char * restrict ip_netmask, char * restrict ip_address, char * restrict ip_netmasklen)
 {
-    if (ip6_prefix != NULL) {
-      strncpy(dest, ip6_prefix, INET6_ADDRSTRLEN);
-    } else if((ip6_address != NULL) && (ip6_prefixlen != NULL)) {
-        snprintf(dest, INET6_ADDRSTRLEN, "%s/%s", ip6_address, ip6_prefixlen);
+    if (ip_netmask != NULL) {
+      strncpy(dest, ip_netmask, INET_ADDRSTRLEN);
+    } else if((ip_address != NULL) && (ip_netmasklen != NULL)) {
+        snprintf(dest, INET_ADDRSTRLEN, "%s/%s", ip_address, ip_netmasklen);
     }
 
     return dest; /* in DA60 format */
@@ -231,24 +231,24 @@ static char *get_ip6_addr(char * restrict dest, char * restrict ip6_prefix, char
 /* The Dhclient's environment variables input to the script:
  * reason
  * interface
- * new_ip6_address, ip6_prefixlen - if no new_ip6_prefix avaial
- * new_ip6_prefix
- * new_dhcp6_domain_search
- * new_dhcp6_name_servers
- * old_ip6_address - for release,expire and stop
+ * new_ip_address, ip_prefixlen - if no new_prefix avaial
+ * new_prefix
+ * new_domain_search
+ * new_domain_name_servers
+ * old_ip_address - for release,expire and stop
  */
 static void process_dhclient_script_callback(const int argc, char *argv[])
 {
-    char new_ip6_addr[INET6_ADDRSTRLEN] = {'\0', };
-    char old_ip6_addr[INET6_ADDRSTRLEN] = {'\0', };
+    char new_ip_addr[INET_ADDRSTRLEN] = {'\0', };
+    char old_ip_addr[INET_ADDRSTRLEN] = {'\0', };
 
-    char * new_ip6_prefix    = getenv("new_ip6_prefix"); /* IP address in Address/Prefix DA60 format */
-    char * new_ip6_address   = getenv("new_ip6_address");
-    char * new_ip6_prefixlen = getenv("new_ip6_prefixlen");
+    char * new_subnet_mask_len    = getenv("new_prefix"); /* IP address prefix as an integer */
+    char * new_ip_address   = getenv("new_ip_address");
+    char * new_subnet_mask = getenv("new_subnet_mask"); /* This is the address in A.B.C.D format */
 
-    char * old_ip6_prefix    = getenv("old_ip6_prefix"); /* IP address in Address/Prefix DA60 format */
-    char * old_ip6_address   = getenv("old_ip6_address");
-    char * old_ip6_prefixlen = getenv("old_ip6_prefixlen");
+    char * old_subnet_mask_len    = getenv("old_prefix"); /* IP address prefix as an integer */
+    char * old_ip_address   = getenv("old_ip_address");
+    char * old_subnet_mask = getenv("old_subnet_mask"); /* This is the address in A.B.C.D format */
 
     (void) argc; // Guaranteed to be >=2
     (void) argv;
@@ -260,11 +260,11 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
            argv[0],
             getenv_nonull("reason"),
             getenv_nonull("interface"),
-            get_ip6_addr(&new_ip6_addr[0], new_ip6_prefix, new_ip6_address, new_ip6_prefixlen),
-            getenv_nonull("new_dhcp6_domain_search"),
-            getenv_nonull("new_dhcp6_name_servers"),
-            get_ip6_addr(&old_ip6_addr[0], old_ip6_prefix, old_ip6_address, old_ip6_prefixlen)
-            );
+            get_ip_addr(&new_ip_addr[0], new_subnet_mask, new_ip_address, new_subnet_mask_len),
+            getenv_nonull("new_domain_search"),
+            getenv_nonull("new_domain_name_servers"),
+            get_ip_addr(&old_ip_addr[0], old_subnet_mask, old_ip_address, old_subnet_mask_len)
+    );
 }
 
 int main(int argc, char *argv[])
