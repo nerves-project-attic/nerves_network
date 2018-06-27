@@ -60,14 +60,6 @@ defmodule Nerves.Network.Dhclientv4 do
     GenServer.stop(pid)
   end
 
-  defp dhclient_mode_args(:stateful) do
-    []
-  end
-
-  defp dhclient_mode_args(:stateless) do
-    ["-S"]
-  end
-
   defp append_ifname(input_str, ifname) do
     input_str <> "." <> ifname
   end
@@ -90,7 +82,7 @@ defmodule Nerves.Network.Dhclientv4 do
 
   # Parsing config.exs entry of the following format: [dhclient: [lease_file: "/var/system/dhclient6.leases", pid_file: "/var/system/dhclient6.pid"]]
   defp dhclient_runtime(ifname) do
-    [ipv4: runtime] = Application.get_env(:nerves_network, :dhclient, [])
+    [ipv4: runtime] = Application.get_env(:nerves_network, :dhclientv4, [])
      Logger.debug fn -> "#{__MODULE__}: runtime options = #{inspect runtime}" end
      runtime_lease_file(ifname, runtime) ++ runtime_pid_file(ifname, runtime)
   end
@@ -107,14 +99,13 @@ defmodule Nerves.Network.Dhclientv4 do
             "-sf", port_path, #The script to be invoked at the lease time
             "-q", "-d"
            ]
-            ++ dhclient_mode_args(mode)
             ++ dhclient_runtime(ifname)
             ++ [ifname]
 
-    port = Port.open({:spawn_executable, port_path},
-                     [{:args, args}, :exit_status, :stderr_to_stdout, {:line, 256}])
+            port = Port.open({:spawn_executable, port_path},
+            [{:args, args}, :exit_status, :stderr_to_stdout, {:line, 256}])
 
-    Logger.info fn -> "#{__MODULE__}: Dhclientv4 port: #{inspect  port}; args: #{inspect args}" end
+Logger.info fn -> "#{__MODULE__}: Dhclientv4 port: #{inspect  port}; args: #{inspect args}" end
 
     {:ok, %{ifname: ifname, port: port}}
   end
