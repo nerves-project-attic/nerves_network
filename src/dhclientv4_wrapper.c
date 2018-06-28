@@ -219,11 +219,13 @@ static const char * getenv_nonull(const char * restrict key)
 
 static char *get_ip_addr(char * restrict dest, char * restrict ip_netmask, char * restrict ip_address, char * restrict ip_netmasklen)
 {
+    fprintf(stderr, "In get_ip_addr\n");
     if (ip_netmask != NULL) {
       strncpy(dest, ip_netmask, INET_ADDRSTRLEN);
     } else if((ip_address != NULL) && (ip_netmasklen != NULL)) {
         snprintf(dest, INET_ADDRSTRLEN, "%s/%s", ip_address, ip_netmasklen);
     }
+    fprintf(stderr, "Finished get_ip_addr\n");
 
     return dest; /* in DA60 format */
 }
@@ -239,24 +241,35 @@ static char *get_ip_addr(char * restrict dest, char * restrict ip_netmask, char 
  */
 static void process_dhclient_script_callback(const int argc, char *argv[])
 {
+    fprintf(stderr, "In process_dhclient_script_callback\n");
     char new_ip_addr[INET_ADDRSTRLEN] = {'\0', };
+    fprintf(stderr, "Got %s\n", new_ip_addr);
     char old_ip_addr[INET_ADDRSTRLEN] = {'\0', };
+    fprintf(stderr, "Got %s\n", old_ip_addr);
 
     char * new_subnet_mask_len    = getenv("new_prefix"); /* IP address prefix as an integer */
+    fprintf(stderr, "Got %s\n", new_subnet_mask_len);
     char * new_ip_address   = getenv("new_ip_address");
+    fprintf(stderr, "Got %s\n", new_ip_address);
     char * new_subnet_mask = getenv("new_subnet_mask"); /* This is the address in A.B.C.D format */
+    fprintf(stderr, "Got %s\n", new_subnet_mask);
 
     char * old_subnet_mask_len    = getenv("old_prefix"); /* IP address prefix as an integer */
+    fprintf(stderr, "Got %s\n", old_subnet_mask_len);
     char * old_ip_address   = getenv("old_ip_address");
+    fprintf(stderr, "Got %s\n", old_ip_address);
     char * old_subnet_mask = getenv("old_subnet_mask"); /* This is the address in A.B.C.D format */
+    fprintf(stderr, "Got %s\n", old_subnet_mask);
 
     (void) argc; // Guaranteed to be >=2
     (void) argv;
 
+    fprintf(stderr, "Finished process_dhclient_script_callback\n");
+
     /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
-    printf("%s,%s,%s,%s,%s,%s,%s\n",
+    fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s\n",
            argv[0],
             getenv_nonull("reason"),
             getenv_nonull("interface"),
@@ -272,6 +285,12 @@ int main(int argc, char *argv[])
     if ((argc >= 2) && (strncmp(argv[1], "dhclient", strlen("dhclient")) == 0)) {
         run_dhclient(argc - 1, &argv[1]);
     } else {
+        fprintf(stderr, "In else clause %d", argc);
+        {
+            int i = 0;
+            for(; i < argc; i++)
+               fprintf(stderr, "argument[%d] = '%s'\r\n", i, argv[i]);
+        }
         process_dhclient_script_callback(argc, argv);
     }
 
