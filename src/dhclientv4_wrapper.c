@@ -29,10 +29,10 @@
 
 #define DEBUG
 #ifdef DEBUG
-//#define debug(args...)  fprintf(stderr, args...), fprintf(stderr, "\r\n")
-//#define debugf(string) fprintf(stderr, format, ...), fprintf(stderr, "\r\n")
+#define debug(args...)  fprintf(stderr, args...), fprintf(stderr, "\r\n")
+#define debugf(string) fprintf(stderr, format, ...), fprintf(stderr, "\r\n")
 #else
-#define debug(format, ...) 
+#define debug(format, ...)
 #define debugf(string)
 #endif
 

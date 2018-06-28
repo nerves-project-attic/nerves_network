@@ -80,7 +80,7 @@ defmodule Nerves.Network.Dhclientv4 do
       end
   end
 
-  # Parsing config.exs entry of the following format: [dhclient: [lease_file: "/var/system/dhclient6.leases", pid_file: "/var/system/dhclient6.pid"]]
+  # Parsing config.exs entry of the following format: [dhclient: [lease_file: "/var/lib/dhclient4.leases", pid_file: "/var//run/dhclient4.pid"]]
   defp dhclient_runtime(ifname) do
     [ipv4: runtime] = Application.get_env(:nerves_network, :dhclientv4, [])
      IO.puts "#{__MODULE__}: runtime options = #{inspect runtime}"
@@ -96,7 +96,7 @@ defmodule Nerves.Network.Dhclientv4 do
 
     args = ["dhclient",
             "-4", #ipv4
-            # "-sf", port_path, #The script to be invoked at the lease time
+            "-sf", port_path, #The script to be invoked at the lease time
             "-v", "-d"
            ]
             ++ dhclient_runtime(ifname)

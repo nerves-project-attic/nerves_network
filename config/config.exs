@@ -11,7 +11,7 @@ config :nerves_network, :default,
 
 #:stateful - Address and other-information i.e. DNSes; The flow is being defined by the DHCPv6 server via A, O, M flags sent in Router Advertisements
   #:stateless - only non-address information
-  eth0: [
+  ens33: [
     ipv4_address_method: :dhcp,
     ipv6_dhcp: :stateful
   ]
@@ -22,6 +22,12 @@ config :nerves_network, :dhclient,
   ipv6: [
     lease_file: "/root/dhclient6.leases",
     pid_file:   "/root/dhclient6.pid"
+  ]
+
+config :nerves_network, :dhclientv4,
+  ipv4: [
+    lease_file: "/root/dhclient4.leases",
+    pid_file:   "/root/dhclient4.pid"
   ]
 
 config :nerves_network, :resolver,
