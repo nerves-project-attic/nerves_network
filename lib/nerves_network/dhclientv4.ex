@@ -141,9 +141,15 @@ Logger.info "#{__MODULE__}: Dhclientv4 port: #{inspect  port}; args: #{inspect a
     handle(message, state)
   end
 
-  def handle_info({_, {:data, {_, message}}}, state) do
-    IO.puts("In normal: got this message: #{inspect message}")
-    handle(message, state)
+  
+
+  def handle(message, state) do
+    IO.puts "This is message: #{inspect message}"
+    message_s = List.to_string(message)
+    IO.puts "This is message_s: #{inspect message_s}"
+    message_l = String.split(message_s, ",")
+    IO.puts "This is message_l: #{inspect message_l}"
+    handle_dhclient(message_l, state)
   end
 
   def handle(message, state) do
@@ -151,6 +157,63 @@ Logger.info "#{__MODULE__}: Dhclientv4 port: #{inspect  port}; args: #{inspect a
       |> List.to_string
       |> String.split(",")
       |> handle_dhclient(state)
+  end
+
+  @typedoc "State of the GenServer."
+  @type state :: %{ifname: Types.ifname, port: port}
+
+  @typedoc "Message from the dhclientv4 port."
+  @type dhclientv4_wrapper_event :: [...] # we can do better.
+
+  @typedoc "Event from the dhclientv4 server to be sent via SystemRegistry."
+  @type event :: :deconfig | :bound | :renew | :leasefail | :reboot | :nak
+
+  @spec handle_dhclient(dhclientv4_wrapper_event, state) :: {:noreply, state}
+  defp handle_dhclient(["deconfig", ifname | _rest], state) do
+    IO.puts "dhclientv4: deconfigure #{ifname}"
+
+    Utils.notify(Nerves.Dhclientv4, state.ifname, :deconfig, %{ifname: ifname})
+    {:noreply, state}
+  end
+
+  defp handle_dhclient(["BOUND", ifname, ip, broadcast, subnet, router, domain, dns], state) do
+    dnslist = String.split(dns, " ")
+    IO.puts "dhclientv4: bound #{ifname}: IP=#{ip}, dns=#{inspect dns} router=#{inspect router}"
+    Utils.notify(Nerves.Dhclientv4, state.ifname, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
+    {:noreply, state}
+  end
+
+  defp handle_dhclient(["REBOOT", ifname, ip, broadcast, subnet, router, domain, dns], state) do
+    dnslist = String.split(dns, " ")
+    IO.puts "dhclientv4: reboot #{ifname}: IP=#{ip}, dns=#{inspect dns} router=#{inspect router}"
+    Utils.notify(Nerves.Dhclientv4, state.ifname, :reboot, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
+    {:noreply, state}
+  end
+
+  defp handle_dhclient(["RENEW", ifname, ip, broadcast, subnet, router, domain, dns], state) do
+    dnslist = String.split(dns, " ")
+    IO.puts "dhclientv4: renew #{ifname}: IP=#{ip}, dns=#{inspect dns} router=#{inspect router}"
+    Utils.notify(Nerves.Dhclientv4, state.ifname, :renew, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
+    {:noreply, state}
+  end
+
+  defp handle_dhclient(["REBIND", ifname, ip, broadcast, subnet, router, domain, dns], state) do
+    dnslist = String.split(dns, " ")
+    IO.puts "dhclientv4: rebind #{ifname}: IP=#{ip}, dns=#{inspect dns} router=#{inspect router}"
+    Utils.notify(Nerves.Dhclientv4, state.ifname, :rebind, %{ifname: ifname, ipv4_address: ip, ipv4_broadcast: broadcast, ipv4_subnet_mask: subnet, ipv4_gateway: router, domain: domain, nameservers: dnslist})
+    {:noreply, state}
+  end
+
+  defp handle_dhclient(["leasefail", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
+    IO.puts "dhclientv4: #{ifname}: leasefail #{message}"
+    Utils.notify(Nerves.Dhclientv4, state.ifname, :leasefail, %{ifname: ifname, message: message})
+    {:noreply, state}
+  end
+
+  defp handle_dhclient(["nak", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns, message], state) do
+    IO.puts "dhclientv4: #{ifname}: NAK #{message}"
+    Utils.notify(Nerves.Dhclientv4, state.ifname, :nak, %{ifname: ifname, message: message})
+    {:noreply, state}
   end
 
   defp handle_dhclient(["deconfig", ifname | _rest], state) do
@@ -163,44 +226,6 @@ Logger.info "#{__MODULE__}: Dhclientv4 port: #{inspect  port}; args: #{inspect a
   #Handling informational debug prints from the dhclient
   defp handle_dhclient([message], state) do
     IO.puts "#{__MODULE__} handle_dhclient args = #{inspect message} state = #{inspect state}"
-    {:noreply, state}
-  end
-
-  #TODO: scribe PREINIT6 handler
-  #[".../dhclient_wrapper", "PREINIT6", "eth1", "", "", ""] state = %{ifname: "eth1", port: #Port<0.5567>}
-
-  defp handle_dhclient([_originator, "REBIND", ifname, ip, domain_search, dns, old_ip], state) do
-    dnslist = String.split(dns, " ")
-    IO.puts "dhclient: rebind #{ifname}: IPv4 = #{ip}, domain_search=#{domain_search}, dns=#{inspect dns} old_ip=#{inspect old_ip}"
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :rebind , %{ifname: ifname, ipv4_address: ip, ipv4_domain: domain_search, ipv4_nameservers: dnslist, old_ipv4_address: old_ip})
-    {:noreply, state}
-  end
-  defp handle_dhclient([_originator, "BOUND", ifname, ip, domain_search, dns, old_ip], state) do
-    dnslist = String.split(dns, " ")
-    IO.puts "dhclient: bound #{ifname}: ipv4 = #{ip}, domain_search=#{domain_search}, dns=#{inspect dns}"
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :bound, %{ifname: ifname, ipv4_address: ip, ipv4_domain: domain_search, ipv4_nameservers: dnslist, old_ipv4_address: old_ip})
-    {:noreply, state}
-  end
-  defp handle_dhclient([_originator, "RENEW", ifname, ip, domain_search, dns, old_ip], state) do
-    dnslist = String.split(dns, " ")
-    IO.puts "dhclient: renew #{ifname}"
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :renew, %{ifname: ifname, ipv4_address: ip, ipv4_domain: domain_search, ipv4_nameservers: dnslist, old_ipv4_address: old_ip})
-    {:noreply, state}
-  end
-
-  defp handle_dhclient([_originator, "RELEASE", ifname, _ip, _domain_search, _dns, old_ip], state) do
-    IO.puts "dhclient: release #{ifname}"
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :renew, %{ifname: ifname, old_ipv4_address: old_ip})
-    {:noreply, state}
-  end
-  defp handle_dhclient([_originator, "EXPIRE", ifname, _ip, _domain_search, _dns, old_ip], state) do
-    IO.puts "dhclient: expire #{ifname}"
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :expire, %{ifname: ifname, old_ipv4_address: old_ip})
-    {:noreply, state}
-  end
-  defp handle_dhclient([_originator, "STOP", ifname, _ip, _domain_search, _dns, old_ip], state) do
-    IO.puts "dhclient: stop #{ifname}"
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :stop, %{ifname: ifname, old_ipv4_address: old_ip})
     {:noreply, state}
   end
 

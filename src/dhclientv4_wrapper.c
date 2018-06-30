@@ -241,42 +241,18 @@ static char *get_ip_addr(char * restrict dest, char * restrict ip_netmask, char 
  */
 static void process_dhclient_script_callback(const int argc, char *argv[])
 {
-    fprintf(stderr, "In process_dhclient_script_callback\n");
-    char new_ip_addr[INET_ADDRSTRLEN] = {'\0', };
-    fprintf(stderr, "Got %s\n", new_ip_addr);
-    char old_ip_addr[INET_ADDRSTRLEN] = {'\0', };
-    fprintf(stderr, "Got %s\n", old_ip_addr);
-
-    char * new_subnet_mask_len    = getenv("new_prefix"); /* IP address prefix as an integer */
-    fprintf(stderr, "Got %s\n", new_subnet_mask_len);
-    char * new_ip_address   = getenv("new_ip_address");
-    fprintf(stderr, "Got %s\n", new_ip_address);
-    char * new_subnet_mask = getenv("new_subnet_mask"); /* This is the address in A.B.C.D format */
-    fprintf(stderr, "Got %s\n", new_subnet_mask);
-
-    char * old_subnet_mask_len    = getenv("old_prefix"); /* IP address prefix as an integer */
-    fprintf(stderr, "Got %s\n", old_subnet_mask_len);
-    char * old_ip_address   = getenv("old_ip_address");
-    fprintf(stderr, "Got %s\n", old_ip_address);
-    char * old_subnet_mask = getenv("old_subnet_mask"); /* This is the address in A.B.C.D format */
-    fprintf(stderr, "Got %s\n", old_subnet_mask);
-
-    (void) argc; // Guaranteed to be >=2
-    (void) argv;
-
-    fprintf(stderr, "Finished process_dhclient_script_callback\n");
-
-    /* If the user tells dhclient to call this program as the script
+        /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
-    fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s\n",
-           argv[0],
+    fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s,%s\n",
             getenv_nonull("reason"),
             getenv_nonull("interface"),
-            get_ip_addr(&new_ip_addr[0], new_subnet_mask, new_ip_address, new_subnet_mask_len),
-            getenv_nonull("new_domain_search"),
-            getenv_nonull("new_domain_name_servers"),
-            get_ip_addr(&old_ip_addr[0], old_subnet_mask, old_ip_address, old_subnet_mask_len)
+            getenv_nonull("new_ip_address"),
+            getenv_nonull("new_broadcast_address"),
+            getenv_nonull("new_subnet_mask"),
+            getenv_nonull("new_routers"),
+            getenv_nonull("new_domain_name"),
+            getenv_nonull("new_domain_name_servers")
     );
 }
 
@@ -285,12 +261,6 @@ int main(int argc, char *argv[])
     if ((argc >= 2) && (strncmp(argv[1], "dhclient", strlen("dhclient")) == 0)) {
         run_dhclient(argc - 1, &argv[1]);
     } else {
-        fprintf(stderr, "In else clause %d", argc);
-        {
-            int i = 0;
-            for(; i < argc; i++)
-               fprintf(stderr, "argument[%d] = '%s'\r\n", i, argv[i]);
-        }
         process_dhclient_script_callback(argc, argv);
     }
 
