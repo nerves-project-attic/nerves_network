@@ -219,14 +219,12 @@ static const char * getenv_nonull(const char * restrict key)
 
 static char *get_ip_addr(char * restrict dest, char * restrict ip_netmask, char * restrict ip_address, char * restrict ip_netmasklen)
 {
-    fprintf(stderr, "In get_ip_addr\n");
     if (ip_netmask != NULL) {
       strncpy(dest, ip_netmask, INET_ADDRSTRLEN);
     } else if((ip_address != NULL) && (ip_netmasklen != NULL)) {
         snprintf(dest, INET_ADDRSTRLEN, "%s/%s", ip_address, ip_netmasklen);
     }
-    fprintf(stderr, "Finished get_ip_addr\n");
-
+    
     return dest; /* in DA60 format */
 }
 
