@@ -236,6 +236,27 @@ static char *get_ip_addr(char * restrict dest, char * restrict ip_netmask, char 
  * new_domain_search
  * new_domain_name_servers
  * old_ip_address - for release,expire and stop
+ * 
+ * From reading /sbin/dhclient-script on NMC3 Filesystem, the following options
+ * for 'reason' are outlined below:
+ *
+    +----------+--------------------------------------------------+
+    |  Reason  |                      Action                      |
+    +----------+--------------------------------------------------+
+    | MEDIUM   | No Action                                        |
+    | PREINIT  | ifup                                             |
+    | ARPCHECK | No Action                                        |
+    | ARPSEND  | No Action                                        |
+    | BOUND    | Update ifconfig with new configuration           |
+    | RENEW    | Update ifconfig with new configuration           |
+    | REBIND   | Update ifconfig with new configuration           |
+    | REBOOT   | Update ifconfig                                  |
+    | EXPIRE   | ifdown                                           |
+    | FAIL     | ifdown                                           |
+    | RELEASE  | ifdown                                           |
+    | STOP     | ifdown                                           |
+    | TIMEOUT  | No Action -> was never tested in dhclient-script |
+    +----------+--------------------------------------------------+
  */
 static void process_dhclient_script_callback(const int argc, char *argv[])
 {
