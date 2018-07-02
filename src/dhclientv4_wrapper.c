@@ -250,7 +250,7 @@ static char *get_ip_addr(char * restrict dest, char * restrict ip_netmask, char 
     | BOUND    | Update ifconfig with new configuration           |
     | RENEW    | Update ifconfig with new configuration           |
     | REBIND   | Update ifconfig with new configuration           |
-    | REBOOT   | Update ifconfig                                  |
+    | REBOOT   | Update ifconfig with new configuration           |
     | EXPIRE   | ifdown                                           |
     | FAIL     | ifdown                                           |
     | RELEASE  | ifdown                                           |

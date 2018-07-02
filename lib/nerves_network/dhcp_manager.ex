@@ -140,15 +140,27 @@ defmodule Nerves.Network.DHCPManager do
 
   ## Context: :down
   defp consume(:down, :ifadded, state), do: state
-  defp consume(:down, :ifup, state) do
+
+  ## covers PREINIT in Nerves.Network.Dhclientv4
+  defp consume(:down, :ifup, state), do: consume(:down, {:ifup, :no_info}, state)
+  defp consume(:down, {:ifup, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :down) :ifup info: #{inspect info}" end
     state
       |> start_dhclient
       |> goto_context(:dhcp)
   end
-  defp consume(:down, :ifdown, state) do
+
+  ## covers BOUND, REBOOT, RENEW, REBIND in Nerves.Network.Dhclientv4.
+  defp consume(:down, {event, _info}) when event in [:bound, :reboot, :renew, :rebind], do: state
+
+  ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
+  defp consume(:down, :ifdown, state), do: consume(:down, {:ifdown, :no_info}, state)
+  defp consume(:down, {:ifdown, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :down) :ifdown info: #{inspect info}" end
     state
       |> stop_dhclient
   end
+
   defp consume(:down, :ifremoved, state) do
     state
       |> stop_dhclient
@@ -156,17 +168,34 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   ## Context: :dhcp
-  defp consume(:dhcp, :ifup, state), do: state
-  defp consume(:dhcp, {:deconfig, _info}, state), do: state
 
-  defp consume(:dhcp, {:bound, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :bound info: #{inspect info}" end
+  ## covers PREINIT in Nerves.Network.Dhclientv4
+  defp consume(:dhcp, :ifup, state), do: consume(:dhcp, {:ifup, :no_info}, state)
+  defp consume(:dhcp, {:ifup, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :dhcp) :ifup info: #{inspect info}" end
+    state
+  end
+
+  ## covers BOUND, REBOOT, RENEW, REBIND in Nerves.Network.Dhclientv4
+  defp consume(:dhcp, {event, info}, state) when event in [:bound, :reboot, :renew, :rebind] do
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :dhcp) #{inspect event} info: #{inspect info}" end
     state
       |> configure(info)
       |> goto_context(:up)
   end
 
+  ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
+  defp consume(:dhcp, :ifdown, state), do: consume(:dhcp, {:ifdown, :no_info}, state)
+  defp consume(:dhcp, {:ifdown, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :dhcp) :ifup info: #{inspect info}" end
+    state
+      |> stop_dhclient
+      |> goto_context(:down)
+  end
 
+
+  ## Neither of these should be called.
+  defp consume(:dhcp, {:deconfig, _info}, state), do: state
   defp consume(:dhcp, {:leasefail, _info}, state) do
     dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
     %{state | dhcp_retry_timer: dhcp_retry_timer}
@@ -175,63 +204,39 @@ defmodule Nerves.Network.DHCPManager do
       |> goto_context(:up)
 
   end
-  defp consume(:dhcp, :ifdown, state) do
-    state
-      |> stop_dhclient
-      |> goto_context(:down)
-  end
 
   ## Context: :up
-  defp consume(:up, :ifup, state), do: state
+  defp consume(:up, :ifup, state), do: consume(:up, {:ifup, :no_info}, state)
+  defp consume(:up, {:ifup, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :ifup info: #{inspect info}" end
+    state
+  end
+
   defp consume(:up, :dhcp_retry, state) do
     state
       |> start_dhclient
       |> goto_context(:dhcp)
   end
-  defp consume(:up, :ifdown, state) do
+  
+  defp consume(:up, :ifdown, state), do: consume(:up, {:ifdown, :no_info}, state)
+  defp consume(:up, {:ifdown, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :ifdown info: #{inspect info}" end
     state
       |> stop_dhclient
       |> deconfigure
       |> goto_context(:down)
   end
+
   defp consume(:up, {:leasefail, _info}, state), do: state
 
   defp consume(:up, {:bound, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :bound info: #{inspect info}" end
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :bound info: #{inspect info}" end
     :no_resolv_conf
       |> configure(state, info)
   end
 
-  defp consume(:up, {:renew, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :renew info: #{inspect info}" end
-    :no_resolv_conf
-      |> configure(state, info)
-      |> goto_context(:up)
-  end
-
-  defp consume(:up, {:rebind, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :rebind info: #{inspect info}" end
-    :no_resolv_conf
-      |> configure(state, info)
-      |> goto_context(:up)
-  end
-
-  defp consume(:up, {:release, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :release info: #{inspect info}" end
-    :no_resolv_conf
-      |> configure(state, info)
-      |> goto_context(:up)
-  end
-
-  defp consume(:up, {:expire, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :expire info: #{inspect info}" end
-    :no_resolv_conf
-      |> configure(state, info)
-      |> goto_context(:up)
-  end
-
-  defp consume(:up, {:stop, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :stop info: #{inspect info}" end
+  defp consume(:up, {event, info}, state) when event in [:renew, :rebind, :reboot, :release, :expire, :stop] do
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :up) #{inspect event} info: #{inspect info}" end
     :no_resolv_conf
       |> configure(state, info)
       |> goto_context(:up)
@@ -243,6 +248,10 @@ defmodule Nerves.Network.DHCPManager do
     state
   end
 
+  
+  
+  
+  
   defp stop_dhclient(state) do
     if is_pid(state.dhcp_pid) do
       Nerves.Network.Dhclientv4.stop(state.dhcp_pid)

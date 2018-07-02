@@ -29,10 +29,10 @@
 
 #define DEBUG
 #ifdef DEBUG
-//#define debug(args...)  fprintf(stderr, args...), fprintf(stderr, "\r\n")
-//#define debugf(string) fprintf(stderr, format, ...), fprintf(stderr, "\r\n")
+#define debug(args...)  fprintf(stderr, args...), fprintf(stderr, "\r\n")
+#define debugf(string) fprintf(stderr, format, ...), fprintf(stderr, "\r\n")
 #else
-#define debug(format, ...) 
+#define debug(format, ...)
 #define debugf(string)
 #endif
 
@@ -256,7 +256,7 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
     /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
-    printf("%s,%s,%s,%s,%s,%s,%s\n",
+    fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s\n",
            argv[0],
             getenv_nonull("reason"),
             getenv_nonull("interface"),
