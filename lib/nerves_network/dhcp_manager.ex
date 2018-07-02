@@ -105,41 +105,7 @@ defmodule Nerves.Network.DHCPManager do
     %Nerves.Network.DHCPManager{state | context: newcontext}
   end
 
-  defp consume(_, :noop, state), do: state
-  ## Context: :removed
-  defp consume(:removed, :ifadded, state) do
-    case Nerves.NetworkInterface.ifup(state.ifname) do
-      :ok ->
-        {:ok, status} = Nerves.NetworkInterface.status state.ifname
-        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
-
-        state
-          |> goto_context(:down)
-      {:error, _} ->
-        # The interface isn't quite up yet. Retry
-        Process.send_after self(), :retry_ifadded, 250
-        state
-          |> goto_context(:retry_add)
-    end
-  end
-  defp consume(:removed, :retry_ifadded, state), do: state
-  defp consume(:removed, :ifdown, state), do: state
-
-  ## Context: :retry_add
-  defp consume(:retry_add, :ifremoved, state) do
-    state
-      |> goto_context(:removed)
-  end
-  defp consume(:retry_add, :retry_ifadded, state) do
-    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
-    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
-
-    state
-      |> goto_context(:down)
-  end
-
   ## Context: :down
-  defp consume(:down, :ifadded, state), do: state
 
   ## covers PREINIT in Nerves.Network.Dhclientv4
   defp consume(:down, :ifup, state), do: consume(:down, {:ifup, :no_info}, state)
@@ -159,12 +125,6 @@ defmodule Nerves.Network.DHCPManager do
     Logger.debug fn -> "#{__MODULE__}: consume (context = :down) :ifdown info: #{inspect info}" end
     state
       |> stop_dhclient
-  end
-
-  defp consume(:down, :ifremoved, state) do
-    state
-      |> stop_dhclient
-      |> goto_context(:removed)
   end
 
   ## Context: :dhcp
@@ -193,29 +153,11 @@ defmodule Nerves.Network.DHCPManager do
       |> goto_context(:down)
   end
 
-
-  ## Neither of these should be called.
-  defp consume(:dhcp, {:deconfig, _info}, state), do: state
-  defp consume(:dhcp, {:leasefail, _info}, state) do
-    dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
-    %{state | dhcp_retry_timer: dhcp_retry_timer}
-      |> stop_dhclient
-      |> start_link_local
-      |> goto_context(:up)
-
-  end
-
   ## Context: :up
   defp consume(:up, :ifup, state), do: consume(:up, {:ifup, :no_info}, state)
   defp consume(:up, {:ifup, info}, state) do
     Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :ifup info: #{inspect info}" end
     state
-  end
-
-  defp consume(:up, :dhcp_retry, state) do
-    state
-      |> start_dhclient
-      |> goto_context(:dhcp)
   end
   
   defp consume(:up, :ifdown, state), do: consume(:up, {:ifdown, :no_info}, state)
@@ -227,15 +169,13 @@ defmodule Nerves.Network.DHCPManager do
       |> goto_context(:down)
   end
 
-  defp consume(:up, {:leasefail, _info}, state), do: state
-
   defp consume(:up, {:bound, info}, state) do
     Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :bound info: #{inspect info}" end
     :no_resolv_conf
       |> configure(state, info)
   end
 
-  defp consume(:up, {event, info}, state) when event in [:renew, :rebind, :reboot, :release, :expire, :stop] do
+  defp consume(:up, {event, info}, state) when event in [:renew, :rebind, :reboot, :release, :expire, :stop] do ## I am not sure if :expire and :stop should be here, but they were here before, so I just left them.
     Logger.debug fn -> "#{__MODULE__}: consume (context = :up) #{inspect event} info: #{inspect info}" end
     :no_resolv_conf
       |> configure(state, info)
@@ -246,11 +186,7 @@ defmodule Nerves.Network.DHCPManager do
   defp consume(context, event, state) do
     Logger.warn "Unhandled event #{inspect event} for context #{inspect context} in consume/3."
     state
-  end
-
-  
-  
-  
+  end  
   
   defp stop_dhclient(state) do
     if is_pid(state.dhcp_pid) do
@@ -310,7 +246,7 @@ defmodule Nerves.Network.DHCPManager do
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
 
     # Show that the route has been updated
-    System.cmd("route", []) |> elem(0) |> Logger.error
+    System.cmd("route", []) |> elem(0) |> Logger.debug
     state
   end
 
@@ -318,4 +254,74 @@ defmodule Nerves.Network.DHCPManager do
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
+
+
+  # ********************************************************************************************* #
+  # ****************************** LEGACY FUNCTIONS START *************************************** #
+  # The following functions may or may not get called. They were inherited from the developers
+  # at Nerves. They will never be called by Nerves.Network.Dhclientv4. We could maybe delete them??
+  # ********************************************************************************************* #
+  defp consume(_, :noop, state), do: state
+  ## Context: :removed
+  defp consume(:removed, :ifadded, state) do
+    case Nerves.NetworkInterface.ifup(state.ifname) do
+      :ok ->
+        {:ok, status} = Nerves.NetworkInterface.status state.ifname
+        notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+
+        state
+          |> goto_context(:down)
+      {:error, _} ->
+        # The interface isn't quite up yet. Retry
+        Process.send_after self(), :retry_ifadded, 250
+        state
+          |> goto_context(:retry_add)
+    end
+  end
+  defp consume(:removed, :retry_ifadded, state), do: state
+  defp consume(:removed, :ifdown, state), do: state
+
+  ## Context: :retry_add
+  defp consume(:retry_add, :ifremoved, state) do
+    state
+      |> goto_context(:removed)
+  end
+  defp consume(:retry_add, :retry_ifadded, state) do
+    {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
+    notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
+
+    state
+      |> goto_context(:down)
+  end
+
+  ## not related to Nerves.Network.Dhclientv4.
+  defp consume(:down, :ifadded, state), do: state
+  defp consume(:down, :ifremoved, state) do
+    state
+      |> stop_dhclient
+      |> goto_context(:removed)
+  end
+
+  ## Neither of these should be called. Not related to Nerves.Network.Dhclientv4.
+  defp consume(:dhcp, {:deconfig, _info}, state), do: state
+  defp consume(:dhcp, {:leasefail, _info}, state) do
+    dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
+    %{state | dhcp_retry_timer: dhcp_retry_timer}
+      |> stop_dhclient
+      |> start_link_local
+      |> goto_context(:up)
+
+  end
+
+  ## Not related to Nerves.Network.Dhclientv4.
+  defp consume(:up, {:leasefail, _info}, state), do: state
+  defp consume(:up, :dhcp_retry, state) do
+    state
+      |> start_dhclient
+      |> goto_context(:dhcp)
+  end
+ # ********************************************************************************************* #
+ # ****************************** LEGACY FUNCTIONS END **************************************** #
+ # ******************************************************************************************** #
+
 end

@@ -29,7 +29,7 @@
 
 #define DEBUG
 #ifdef DEBUG
-#define debug(args...)  fprintf(stderr, args...), fprintf(stderr, "\r\n")
+#define debug(...)  fprintf(stderr, __VA_ARGS__), fprintf(stderr, "\r\n")
 #define debugf(string) fprintf(stderr, format, ...), fprintf(stderr, "\r\n")
 #else
 #define debug(format, ...)
@@ -109,7 +109,7 @@ static void process_erlang_request(void)
     if (amount <= 0) {
         /* Error or Erlang closed the port -> we're done. */
         kill(child_pid, SIGKILL);
-        fprintf(stderr, "[%s %d]: Exitting...\r\n", __FILE__, __LINE__);
+        debug("[%s %d]: Exitting...\r\n", __FILE__, __LINE__);
         exit(EXIT_SUCCESS);
     }
 
@@ -117,20 +117,20 @@ static void process_erlang_request(void)
         /* Each command is a byte. */
         switch ((erlang_client_command) buffer[i]) {
             case RENEW:
-                fprintf(stderr, "[%s %d]: Erlang RENEW request\r\n", __FILE__, __LINE__);
+                debug("[%s %d]: Erlang RENEW request\r\n", __FILE__, __LINE__);
                 kill(child_pid, SIGUSR1);
                 break;
             case RELEASE: // release
-                fprintf(stderr, "[%s %d]: Erlang RELEASE request\r\n", __FILE__, __LINE__);
+                debug("[%s %d]: Erlang RELEASE request\r\n", __FILE__, __LINE__);
                 kill(child_pid, SIGUSR2);
                 break;
             case EXIT:
-                fprintf(stderr, "[%s %d]: Erlang EXIT request\r\n", __FILE__, __LINE__);
+                debug("[%s %d]: Erlang EXIT request\r\n", __FILE__, __LINE__);
                 kill(child_pid, SIGKILL);
                 exit(EXIT_SUCCESS);
                 break;
             default:
-                fprintf(stderr, "[%s %d]: Erlang UNKNOWN request\r\n", __FILE__, __LINE__);
+                debug("[%s %d]: Erlang UNKNOWN request\r\n", __FILE__, __LINE__);
                 kill(child_pid, SIGKILL);
                 errx(EXIT_FAILURE, "unexpected command: %d", (int) buffer[i]);
         }
@@ -147,7 +147,7 @@ static void parent()
 
         int rc = poll(fdset, 2, -1);
 
-        fprintf(stderr, "[%s %d]: %s rc = %d\r\n", __FILE__, __LINE__, __FUNCTION__, rc);
+        debug("[%s %d]: %s rc = %d\r\n", __FILE__, __LINE__, __FUNCTION__, rc);
 
         if (rc < 0) {
             /* Ignore EINTR */
@@ -163,7 +163,7 @@ static void parent()
 
         if (fdset[1].revents & (POLLIN | POLLHUP)) {
             /* When the child exits, we exit. */
-            fprintf(stderr, "[%s %d]: %s Child exitted, so are we...\r\n", __FILE__, __LINE__, __FUNCTION__);
+            debug("[%s %d]: %s Child exitted, so are we...\r\n", __FILE__, __LINE__, __FUNCTION__);
             return;
         }
     }
@@ -217,25 +217,15 @@ static const char * getenv_nonull(const char * restrict key)
     return result != NULL ? result : "";
 }
 
-static char *get_ip_addr(char * restrict dest, char * restrict ip_netmask, char * restrict ip_address, char * restrict ip_netmasklen)
-{
-    if (ip_netmask != NULL) {
-      strncpy(dest, ip_netmask, INET_ADDRSTRLEN);
-    } else if((ip_address != NULL) && (ip_netmasklen != NULL)) {
-        snprintf(dest, INET_ADDRSTRLEN, "%s/%s", ip_address, ip_netmasklen);
-    }
-    
-    return dest; /* in DA60 format */
-}
-
 /* The Dhclient's environment variables input to the script:
  * reason
  * interface
- * new_ip_address, ip_prefixlen - if no new_prefix avaial
- * new_prefix
- * new_domain_search
+ * new_ip_address
+ * new_broadcast_address
+ * new_subnet_mask
+ * new_routers
+ * new_domain_name
  * new_domain_name_servers
- * old_ip_address - for release,expire and stop
  * 
  * From reading /sbin/dhclient-script on NMC3 Filesystem, the following options
  * for 'reason' are outlined below:
@@ -263,7 +253,7 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
         /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
-    fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s,%s\n",
+    debug("%s,%s,%s,%s,%s,%s,%s,%s\n",
             getenv_nonull("reason"),
             getenv_nonull("interface"),
             getenv_nonull("new_ip_address"),
