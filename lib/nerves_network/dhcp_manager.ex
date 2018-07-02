@@ -117,7 +117,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   ## covers BOUND, REBOOT, RENEW, REBIND in Nerves.Network.Dhclientv4.
-  defp consume(:down, {event, _info}) when event in [:bound, :reboot, :renew, :rebind], do: state
+  defp consume(:down, {event, _info}, state) when event in [:bound, :reboot, :renew, :rebind], do: state
 
   ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
   defp consume(:down, :ifdown, state), do: consume(:down, {:ifdown, :no_info}, state)
@@ -180,81 +180,7 @@ defmodule Nerves.Network.DHCPManager do
     :no_resolv_conf
       |> configure(state, info)
       |> goto_context(:up)
-  end
-
-  # Catch-all handler for consume
-  defp consume(context, event, state) do
-    Logger.warn "Unhandled event #{inspect event} for context #{inspect context} in consume/3."
-    state
   end  
-  
-  defp stop_dhclient(state) do
-    if is_pid(state.dhcp_pid) do
-      Nerves.Network.Dhclientv4.stop(state.dhcp_pid)
-      %Nerves.Network.DHCPManager{state | dhcp_pid: nil}
-    else
-      state
-    end
-  end
-  defp start_dhclient(state) do
-    state = stop_dhclient(state)
-    {:ok, pid} = Nerves.Network.Dhclientv4.start_link({state.ifname, state.settings[:ipv4_dhcp]})
-    %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
-  end
-
-  defp start_link_local(state) do
-    {:ok, ifsettings} = Nerves.NetworkInterface.status(state.ifname)
-    ip = generate_link_local(ifsettings.mac_address)
-    scope(state.ifname)
-    |> SystemRegistry.update(%{ipv4_address: ip})
-    :ok = Nerves.NetworkInterface.setup(state.ifname, [ipv4_address: ip])
-    state
-  end
-
-  defp setup_iface(state, info) do
-    case Nerves.NetworkInterface.setup(state.ifname, info) do
-      :ok -> :ok
-      {:error, :eexist} -> :ok
-        #It may very often happen that at the renew time we would receive the lease of the very same IP address...
-        #In such a case whilst adding already existent IP address to the network interface we shall receive 'error exists'.
-        #It definitely is non-critical situation and actually confirms that we do not have to take any action.
-    end
-  end
-
-  defp remove_old_ip(state, info) do
-    old_ip = info[:"old_ipv4_address"] || ""
-    new_ip = info[:"ipv4_address"] || ""
-
-    if old_ip == "" or new_ip == old_ip do
-      :ok
-    else
-      Logger.debug fn -> "Removing ipv4 address = #{inspect old_ip} from #{inspect state.ifname}" end
-      Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => old_ip})
-    end
-  end
-
-  defp configure(:no_resolv_conf, state, info) do
-    remove_old_ip(state, info)
-    :ok = setup_iface(state, info)
-    state
-  end
-
-  defp configure(state, info) do
-    Logger.warn("DHCP state #{inspect state} #{inspect info}")
-
-    :ok = setup_iface(state, info)
-    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
-
-    # Show that the route has been updated
-    System.cmd("route", []) |> elem(0) |> Logger.debug
-    state
-  end
-
-  defp deconfigure(state) do
-    :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
-    state
-  end
-
 
   # ********************************************************************************************* #
   # ****************************** LEGACY FUNCTIONS START *************************************** #
@@ -323,5 +249,78 @@ defmodule Nerves.Network.DHCPManager do
  # ********************************************************************************************* #
  # ****************************** LEGACY FUNCTIONS END **************************************** #
  # ******************************************************************************************** #
+
+  # Catch-all handler for consume
+  defp consume(context, event, state) do
+    Logger.warn "Unhandled event #{inspect event} for context #{inspect context} in consume/3."
+    state
+  end
+
+  defp stop_dhclient(state) do
+    if is_pid(state.dhcp_pid) do
+      Nerves.Network.Dhclientv4.stop(state.dhcp_pid)
+      %Nerves.Network.DHCPManager{state | dhcp_pid: nil}
+    else
+      state
+    end
+  end
+  defp start_dhclient(state) do
+    state = stop_dhclient(state)
+    {:ok, pid} = Nerves.Network.Dhclientv4.start_link({state.ifname, state.settings[:ipv4_dhcp]})
+    %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
+  end
+
+  defp start_link_local(state) do
+    {:ok, ifsettings} = Nerves.NetworkInterface.status(state.ifname)
+    ip = generate_link_local(ifsettings.mac_address)
+    scope(state.ifname)
+    |> SystemRegistry.update(%{ipv4_address: ip})
+    :ok = Nerves.NetworkInterface.setup(state.ifname, [ipv4_address: ip])
+    state
+  end
+
+  defp setup_iface(state, info) do
+    case Nerves.NetworkInterface.setup(state.ifname, info) do
+      :ok -> :ok
+      {:error, :eexist} -> :ok
+        #It may very often happen that at the renew time we would receive the lease of the very same IP address...
+        #In such a case whilst adding already existent IP address to the network interface we shall receive 'error exists'.
+        #It definitely is non-critical situation and actually confirms that we do not have to take any action.
+    end
+  end
+
+  defp remove_old_ip(state, info) do
+    old_ip = info[:"old_ipv4_address"] || ""
+    new_ip = info[:"ipv4_address"] || ""
+
+    if old_ip == "" or new_ip == old_ip do
+      :ok
+    else
+      Logger.debug fn -> "Removing ipv4 address = #{inspect old_ip} from #{inspect state.ifname}" end
+      Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => old_ip})
+    end
+  end
+
+  defp configure(:no_resolv_conf, state, info) do
+    remove_old_ip(state, info)
+    :ok = setup_iface(state, info)
+    state
+  end
+
+  defp configure(state, info) do
+    Logger.warn("DHCP state #{inspect state} #{inspect info}")
+
+    :ok = setup_iface(state, info)
+    :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
+
+    # Show that the route has been updated
+    System.cmd("route", []) |> elem(0) |> Logger.debug
+    state
+  end
+
+  defp deconfigure(state) do
+    :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
+    state
+  end
 
 end
