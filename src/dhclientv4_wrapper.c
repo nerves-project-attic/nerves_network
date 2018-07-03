@@ -5,12 +5,12 @@
  ****************************************************************/
 
 /**
- * @file dhclient_wrapper.c
+ * @file dhclientv4_wrapper.c
  * @brief Wrapping calls to IDC's dhclient
- * @author Tomasz Kazimierz Motyl
+ * @author Alan Jackson
  * @e-mail tomasz.motyl@schneider-electric.com
  * @version 0.1
- * @date 2017-10-17
+ * @date 2018-06-23
  */
 
 #define _GNU_SOURCE
@@ -29,7 +29,7 @@
 
 #define DEBUG
 #ifdef DEBUG
-#define debug(args...)  fprintf(stderr, args...), fprintf(stderr, "\r\n")
+#define debug(...)  fprintf(stderr, __VA_ARGS__), fprintf(stderr, "\r\n")
 #define debugf(string) fprintf(stderr, format, ...), fprintf(stderr, "\r\n")
 #else
 #define debug(format, ...)
@@ -38,7 +38,7 @@
 
 
 #define DHCLIENT_PATH        "/sbin/dhclient"
-#define DHCLIENT_SCRIPT_PATH "/sbin/dhclient-script"
+// #define DHCLIENT_SCRIPT_PATH "/sbin/dhclient-script" 
 
 static pid_t child_pid;
 static int   exit_pipe_fd[2];
@@ -109,7 +109,7 @@ static void process_erlang_request(void)
     if (amount <= 0) {
         /* Error or Erlang closed the port -> we're done. */
         kill(child_pid, SIGKILL);
-        fprintf(stderr, "[%s %d]: Exitting...\r\n", __FILE__, __LINE__);
+        debug("[%s %d]: Exitting...\r\n", __FILE__, __LINE__);
         exit(EXIT_SUCCESS);
     }
 
@@ -117,20 +117,20 @@ static void process_erlang_request(void)
         /* Each command is a byte. */
         switch ((erlang_client_command) buffer[i]) {
             case RENEW:
-                fprintf(stderr, "[%s %d]: Erlang RENEW request\r\n", __FILE__, __LINE__);
+                debug("[%s %d]: Erlang RENEW request\r\n", __FILE__, __LINE__);
                 kill(child_pid, SIGUSR1);
                 break;
             case RELEASE: // release
-                fprintf(stderr, "[%s %d]: Erlang RELEASE request\r\n", __FILE__, __LINE__);
+                debug("[%s %d]: Erlang RELEASE request\r\n", __FILE__, __LINE__);
                 kill(child_pid, SIGUSR2);
                 break;
             case EXIT:
-                fprintf(stderr, "[%s %d]: Erlang EXIT request\r\n", __FILE__, __LINE__);
+                debug("[%s %d]: Erlang EXIT request\r\n", __FILE__, __LINE__);
                 kill(child_pid, SIGKILL);
                 exit(EXIT_SUCCESS);
                 break;
             default:
-                fprintf(stderr, "[%s %d]: Erlang UNKNOWN request\r\n", __FILE__, __LINE__);
+                debug("[%s %d]: Erlang UNKNOWN request\r\n", __FILE__, __LINE__);
                 kill(child_pid, SIGKILL);
                 errx(EXIT_FAILURE, "unexpected command: %d", (int) buffer[i]);
         }
@@ -147,7 +147,7 @@ static void parent()
 
         int rc = poll(fdset, 2, -1);
 
-        fprintf(stderr, "[%s %d]: %s rc = %d\r\n", __FILE__, __LINE__, __FUNCTION__, rc);
+        debug("[%s %d]: %s rc = %d\r\n", __FILE__, __LINE__, __FUNCTION__, rc);
 
         if (rc < 0) {
             /* Ignore EINTR */
@@ -163,7 +163,7 @@ static void parent()
 
         if (fdset[1].revents & (POLLIN | POLLHUP)) {
             /* When the child exits, we exit. */
-            fprintf(stderr, "[%s %d]: %s Child exitted, so are we...\r\n", __FILE__, __LINE__, __FUNCTION__);
+            debug("[%s %d]: %s Child exitted, so are we...\r\n", __FILE__, __LINE__, __FUNCTION__);
             return;
         }
     }
@@ -217,54 +217,52 @@ static const char * getenv_nonull(const char * restrict key)
     return result != NULL ? result : "";
 }
 
-static char *get_ip6_addr(char * restrict dest, char * restrict ip6_prefix, char * restrict ip6_address, char * restrict ip6_prefixlen)
-{
-    if (ip6_prefix != NULL) {
-      strncpy(dest, ip6_prefix, INET6_ADDRSTRLEN);
-    } else if((ip6_address != NULL) && (ip6_prefixlen != NULL)) {
-        snprintf(dest, INET6_ADDRSTRLEN, "%s/%s", ip6_address, ip6_prefixlen);
-    }
-
-    return dest; /* in DA60 format */
-}
-
 /* The Dhclient's environment variables input to the script:
  * reason
  * interface
- * new_ip6_address, ip6_prefixlen - if no new_ip6_prefix avaial
- * new_ip6_prefix
- * new_dhcp6_domain_search
- * new_dhcp6_name_servers
- * old_ip6_address - for release,expire and stop
+ * new_ip_address
+ * new_broadcast_address
+ * new_subnet_mask
+ * new_routers
+ * new_domain_name
+ * new_domain_name_servers
+ * 
+ * From reading /sbin/dhclient-script on NMC3 Filesystem, the following options
+ * for 'reason' are outlined below:
+ *
+    +----------+--------------------------------------------------+
+    |  Reason  |                      Action                      |
+    +----------+--------------------------------------------------+
+    | MEDIUM   | No Action                                        |
+    | PREINIT  | ifup                                             |
+    | ARPCHECK | No Action                                        |
+    | ARPSEND  | No Action                                        |
+    | BOUND    | Update ifconfig with new configuration           |
+    | RENEW    | Update ifconfig with new configuration           |
+    | REBIND   | Update ifconfig with new configuration           |
+    | REBOOT   | Update ifconfig with new configuration           |
+    | EXPIRE   | ifdown                                           |
+    | FAIL     | ifdown                                           |
+    | RELEASE  | ifdown                                           |
+    | STOP     | ifdown                                           |
+    | TIMEOUT  | No Action -> was never tested in dhclient-script |
+    +----------+--------------------------------------------------+
  */
 static void process_dhclient_script_callback(const int argc, char *argv[])
 {
-    char new_ip6_addr[INET6_ADDRSTRLEN] = {'\0', };
-    char old_ip6_addr[INET6_ADDRSTRLEN] = {'\0', };
-
-    char * new_ip6_prefix    = getenv("new_ip6_prefix"); /* IP address in Address/Prefix DA60 format */
-    char * new_ip6_address   = getenv("new_ip6_address");
-    char * new_ip6_prefixlen = getenv("new_ip6_prefixlen");
-
-    char * old_ip6_prefix    = getenv("old_ip6_prefix"); /* IP address in Address/Prefix DA60 format */
-    char * old_ip6_address   = getenv("old_ip6_address");
-    char * old_ip6_prefixlen = getenv("old_ip6_prefixlen");
-
-    (void) argc; // Guaranteed to be >=2
-    (void) argv;
-
-    /* If the user tells dhclient to call this program as the script
+        /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
-    fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s\n",
-           argv[0],
+    debug("%s,%s,%s,%s,%s,%s,%s,%s\n",
             getenv_nonull("reason"),
             getenv_nonull("interface"),
-            get_ip6_addr(&new_ip6_addr[0], new_ip6_prefix, new_ip6_address, new_ip6_prefixlen),
-            getenv_nonull("new_dhcp6_domain_search"),
-            getenv_nonull("new_dhcp6_name_servers"),
-            get_ip6_addr(&old_ip6_addr[0], old_ip6_prefix, old_ip6_address, old_ip6_prefixlen)
-            );
+            getenv_nonull("new_ip_address"),
+            getenv_nonull("new_broadcast_address"),
+            getenv_nonull("new_subnet_mask"),
+            getenv_nonull("new_routers"),
+            getenv_nonull("new_domain_name"),
+            getenv_nonull("new_domain_name_servers")
+    );
 }
 
 int main(int argc, char *argv[])
