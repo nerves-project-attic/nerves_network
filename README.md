@@ -16,6 +16,14 @@ def deps(target) do
 end
 ```
 
+# Example Applications
+[nerves_examples](https://github.com/nerves-project/nerves_examples/tree/master/hello_network)
+has a networking example that can get you started.
+
+[nerves_init_gadget](https://github.com/nerves-project/nerves_init_gadget) also
+sets can setup networking for wired ethernet connections and usb gadgets such
+as beaglebone boards and raspberry pi 0.
+
 # WiFi Networking
 
 ## Installation and Setup
