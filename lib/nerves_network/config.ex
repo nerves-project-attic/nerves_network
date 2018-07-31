@@ -29,6 +29,8 @@ defmodule Nerves.Network.Config  do
 
   def init([]) do
     Logger.debug fn -> "#{__MODULE__}: init([])" end
+    # If we enable hysteresis we will drop updates that
+    # are needed to setup ipv4 and ipv6
     SR.register(min_interval: 500)
     defaults =
       Application.get_env(:nerves_network, :default, [])
