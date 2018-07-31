@@ -131,10 +131,10 @@ Logger.info "#{__MODULE__}: Dhclientv4 port: #{inspect  port}; args: #{inspect a
   end
 
   #  Nerves.Network.Dhclientv4.handle_info({#Port<0.6423>, {:exit_status, 0}}, %{ifname: "eth1", port: #Port<0.6423>})
-  def handle_info({pid, {:exit_status, exit_status}}, state) do
-    Logger.debug "#{__MODULE__}: handle_info pid = #{inspect pid}: exit_status = #{inspect exit_status}, state = #{inspect state}"
-    "#{__MODULE__} Exit status: #{inspect exit_status} pid: #{inspect pid}"
-    |> handle_dhclient(state)
+  def handle_info({_pid, {:exit_status, exit_status}}, state) do
+    Logger.error("dhclientv4 exited: exit_status = #{inspect exit_status}, state = #{inspect state}")
+
+    {:stop, :exit, state}
   end
 
   def handle_info({_, {:data, {:eol, message}}}, state) do
