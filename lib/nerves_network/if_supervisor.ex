@@ -27,31 +27,27 @@ defmodule Nerves.Network.IFSupervisor do
 
   def setup(ifname, settings) do
     pidname = pname(ifname)
-    if !Process.whereis(pidname) do
-      manager_modules = managers(if_type(ifname), settings)
-      Logger.debug fn -> "#{__MODULE__} manager_modules: #{inspect manager_modules}" end
 
-      children =
-        for manager <- manager_modules  do
-          child_name = pname(ifname, manager)
-          worker(manager, [ifname, settings, [name: child_name]], id: {pname(ifname), child_name})
-        end
-      Logger.debug fn -> "#{__MODULE__} children: #{inspect children}" end
+    manager_modules = managers(if_type(ifname), settings)
+    Logger.debug fn -> "#{__MODULE__} manager_modules: #{inspect manager_modules}" end
 
-      result = {:ok, for child <- children do
-                        Logger.debug  fn -> "#{__MODULE__} Starting child: #{inspect child}..." end
-                        retval = Supervisor.start_child(__MODULE__, child)
-                        Logger.debug  fn -> "#{__MODULE__}    retval = #{inspect retval}..." end
-                        retval
-                     end #For child <- children
-        }
+    children =
+      for manager <- manager_modules  do
+        child_name = pname(ifname, manager)
+        worker(manager, [ifname, settings, [name: child_name]], id: {pname(ifname), child_name})
+      end
+    Logger.debug fn -> "#{__MODULE__} children: #{inspect children}" end
 
-      Logger.debug fn -> "#{__MODULE__} setup result: #{inspect result}" end
-      result
-    else
-      Logger.debug ":error, :already_added"
-      {:error, :already_added}
-    end
+    result = {:ok, for child <- children do
+                      Logger.debug  fn -> "#{__MODULE__} Starting child: #{inspect child}..." end
+                      retval = Supervisor.start_child(__MODULE__, child)
+                      Logger.debug  fn -> "#{__MODULE__}    retval = #{inspect retval}..." end
+                      retval
+                    end #For child <- children
+      }
+
+    Logger.debug fn -> "#{__MODULE__} setup result: #{inspect result}" end
+    result
   end
 
 

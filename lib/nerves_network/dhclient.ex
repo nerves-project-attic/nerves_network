@@ -68,31 +68,31 @@ defmodule Nerves.Network.Dhclient do
     ["-S"]
   end
 
-  defp append_ifname(input_str, ifname) do
-    input_str <> "." <> ifname
+  defp append_ifname(input_str, ifname, mode) do
+    input_str <> "." <> ifname <> "." <> to_string(mode)
   end
 
-  defp runtime_lease_file(ifname, runtime) do
+  defp runtime_lease_file(ifname, runtime, mode) do
       if Keyword.has_key?(runtime, :lease_file) do
-        [ "-lf", Keyword.get(runtime, :lease_file) |> append_ifname(ifname) ]
+        [ "-lf", Keyword.get(runtime, :lease_file) |> append_ifname(ifname, mode) ]
       else
         []
       end
   end
 
-  defp runtime_pid_file(ifname, runtime) do
+  defp runtime_pid_file(ifname, runtime, mode) do
       if Keyword.has_key?(runtime, :pid_file) do
-        [ "-pf", Keyword.get(runtime, :pid_file) |> append_ifname(ifname) ]
+        [ "-pf", Keyword.get(runtime, :pid_file) |> append_ifname(ifname, mode) ]
       else
         []
       end
   end
 
   # Parsing config.exs entry of the following format: [dhclient: [lease_file: "/var/system/dhclient6.leases", pid_file: "/var/system/dhclient6.pid"]]
-  defp dhclient_runtime(ifname) do
+  defp dhclient_runtime(ifname, mode) do
     [ipv6: runtime] = Application.get_env(:nerves_network, :dhclient, [])
      Logger.debug fn -> "#{__MODULE__}: runtime options = #{inspect runtime}" end
-     runtime_lease_file(ifname, runtime) ++ runtime_pid_file(ifname, runtime)
+     runtime_lease_file(ifname, runtime, mode) ++ runtime_pid_file(ifname, runtime, mode)
   end
 
   def init(args) do
@@ -108,7 +108,7 @@ defmodule Nerves.Network.Dhclient do
             "-q", "-d"
            ]
             ++ dhclient_mode_args(mode)
-            ++ dhclient_runtime(ifname)
+            ++ dhclient_runtime(ifname, mode)
             ++ [ifname]
 
     port = Port.open({:spawn_executable, port_path},
@@ -140,10 +140,10 @@ defmodule Nerves.Network.Dhclient do
   end
 
   #  Nerves.Network.Dhclient.handle_info({#Port<0.6423>, {:exit_status, 0}}, %{ifname: "eth1", port: #Port<0.6423>})
-  def handle_info({pid, {:exit_status, exit_status}}, state) do
-    Logger.debug fn -> "#{__MODULE__}: handle_info pid = #{inspect pid}: exit_status = #{inspect exit_status}, state = #{inspect state}" end
-    "#{__MODULE__} Exit status: #{inspect exit_status} pid: #{inspect pid}"
-    |> handle_dhclient(state)
+  def handle_info({_pid, {:exit_status, exit_status}}, state) do
+    Logger.error("dhclient exited exit_status = #{inspect exit_status}, state = #{inspect state}")
+
+    {:stop, :exit, state}
   end
 
   def handle_info({_, {:data, {:eol, message}}}, state) do
