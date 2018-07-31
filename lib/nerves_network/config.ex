@@ -29,7 +29,9 @@ defmodule Nerves.Network.Config  do
 
   def init([]) do
     Logger.debug fn -> "#{__MODULE__}: init([])" end
-    SR.register(hysteresis: 50, min_interval: 500)
+    # If we enable hysteresis we will drop updates that
+    # are needed to setup ipv4 and ipv6
+    SR.register(min_interval: 500)
     defaults =
       Application.get_env(:nerves_network, :default, [])
 
@@ -48,7 +50,8 @@ defmodule Nerves.Network.Config  do
   end
 
   def handle_info({:system_registry, :global, registry}, s) do
-    Logger.debug fn -> "++++ handle_info: registry = #{inspect registry}; s = #{inspect s}" end
+    # The registry is HUGE.  Do not inspect unless its necessary
+    #Logger.debug fn -> "++++ handle_info: registry = #{inspect registry}; s = #{inspect s}" end
     net_config = get_in(registry, @scope) || %{}
     s = update(net_config, s)
     {:noreply, s}
