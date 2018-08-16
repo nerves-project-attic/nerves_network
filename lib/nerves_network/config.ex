@@ -23,6 +23,8 @@ defmodule Nerves.Network.Config  do
 
   @spec drop(Types.ifname, atom) :: {:ok, {old :: map, new ::map}}
   def drop(iface, priority \\ @priority) do
+    Nerves.Network.IFSupervisor.teardown(iface)
+
     scope(iface)
     |> SR.delete(priority: priority)
   end
