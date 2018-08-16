@@ -269,6 +269,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
   defp start_dhclient(state) do
     state = stop_dhclient(state)
+    #state = start_link_local(state)
     {:ok, pid} = Nerves.Network.Dhclient.start_link({state.ifname, state.settings[:ipv6_dhcp]})
     %Nerves.Network.DHCPv6Manager{state | dhcp_pid: pid}
   end
@@ -283,6 +284,7 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
 
   defp setup_iface(state, info) do
+    #state = start_link_local(state)
     case Nerves.NetworkInterface.setup(state.ifname, info) do
       :ok -> :ok
       {:error, :eexist} -> :ok
