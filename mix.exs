@@ -55,8 +55,8 @@ defmodule Nerves.Network.Mixfile do
       {:nerves_network_interface, "~> 0.4.4"},
       {:nerves_wpa_supplicant, "~> 0.3.2"},
       {:elixir_make, "~> 0.4", runtime: false},
-      {:ex_doc, "~> 0.18", only: :dev, runtime: false},
-      {:dialyxir, "~> 0.5", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.18.0", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 0.5.1", only: [:dev, :test], runtime: false}
     ]
   end
 end
