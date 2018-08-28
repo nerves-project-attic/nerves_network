@@ -4,16 +4,17 @@ sudo: required
 dist: trusty
 
 otp_release:
-    - 20.2
+    - 21.0
 
 env:
-    - ELIXIR_VERSION=1.6.2
+    - ELIXIR_VERSION=1.6.6-otp-21
+    - ELIXIR_VERSION=1.7.3-otp-21
 
 before_install:
     - sudo apt-get update -qq
     - sudo apt-get install -qq libmnl-dev
-    - wget https://github.com/elixir-lang/elixir/releases/download/v$ELIXIR_VERSION/Precompiled.zip
-    - unzip -d elixir Precompiled.zip
+    - wget https://repo.hex.pm/builds/elixir/v$ELIXIR_VERSION.zip
+    - unzip -d elixir v$ELIXIR_VERSION.zip
 
 before_script:
     - export PATH=`pwd`/elixir/bin:$PATH
@@ -22,4 +23,5 @@ script:
     - mix local.hex --force
     - mix deps.get
     - mix test
-    - mix format --check-formatted
+    - if (elixir -v | grep 1.7); then mix docs; mix format --check-formatted; fi
+    - mix hex.build
