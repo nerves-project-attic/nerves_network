@@ -22,8 +22,8 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   def setup(ifname, settings)
-    when is_atom(ifname)
-    when is_list(settings) do
+      when is_atom(ifname)
+      when is_list(settings) do
     pidname = pname(ifname)
     manager_module = manager(if_type(ifname), settings)
     child = worker(manager_module, [ifname, settings, [name: pidname]], id: pidname)
@@ -31,7 +31,7 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   @spec teardown(Types.ifname()) ::
-    :ok | {:error, any} | :not_found | :simple_one_for_one | :running | :restarting
+          :ok | {:error, any} | :not_found | :simple_one_for_one | :running | :restarting
   def teardown(ifname) do
     pidname = pname(ifname)
 
