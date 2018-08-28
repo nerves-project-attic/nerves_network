@@ -86,9 +86,12 @@ defmodule Nerves.Network.Udhcpc do
   end
 
   def terminate(_reason, state) do
-    # Send the command to our wrapper to shut everything down.
-    Port.command(state.port, <<3>>)
-    Port.close(state.port)
+    if Port.info(state.port) do
+      # Send the command to our wrapper to shut everything down.
+      Port.command(state.port, <<3>>)
+      Port.close(state.port)
+    end
+
     :ok
   end
 
@@ -102,6 +105,14 @@ defmodule Nerves.Network.Udhcpc do
   def handle_call(:release, _from, state) do
     Port.command(state.port, <<2>>)
     {:reply, :ok, state}
+  end
+
+  def handle_info({_, {:exit_status, 0}}, state) do
+    {:stop, :normal, state}
+  end
+
+  def handle_info({_, {:exit_status, _}}, state) do
+    {:stop, :port_exit, state}
   end
 
   def handle_info({_, {:data, {:eol, message}}}, state) do
