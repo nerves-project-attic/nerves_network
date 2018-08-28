@@ -6,7 +6,7 @@
   "makeup": {:hex, :makeup, "0.5.1", "966c5c2296da272d42f1de178c1d135e432662eca795d6dc12e5e8787514edf7", [:mix], [{:nimble_parsec, "~> 0.2.2", [hex: :nimble_parsec, repo: "hexpm", optional: false]}], "hexpm"},
   "makeup_elixir": {:hex, :makeup_elixir, "0.8.0", "1204a2f5b4f181775a0e456154830524cf2207cf4f9112215c05e0b76e4eca8b", [:mix], [{:makeup, "~> 0.5.0", [hex: :makeup, repo: "hexpm", optional: false]}, {:nimble_parsec, "~> 0.2.2", [hex: :nimble_parsec, repo: "hexpm", optional: false]}], "hexpm"},
   "nerves_network_interface": {:hex, :nerves_network_interface, "0.4.4", "200b1a84bc1a7fdeaf3a1e0e2d4e9b33e240b034e73f39372768d43f8690bae0", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
-  "nerves_wpa_supplicant": {:hex, :nerves_wpa_supplicant, "0.3.2", "19dc7e1248336e7f542b11b2b857ceb5b088d3eb41a6ca75b7b76628dcf67aad", [:make, :mix], [{:elixir_make, "~> 0.3", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
+  "nerves_wpa_supplicant": {:hex, :nerves_wpa_supplicant, "0.3.3", "91b8505c023e891561ac6c64b9955450aa67fb16b523b18db5eeb4b4bcf30dc7", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
   "nimble_parsec": {:hex, :nimble_parsec, "0.2.2", "d526b23bdceb04c7ad15b33c57c4526bf5f50aaa70c7c141b4b4624555c68259", [:mix], [], "hexpm"},
   "system_registry": {:hex, :system_registry, "0.8.0", "09240347628b001433d18279a2759ef7237ba7361239890d8c599cca9a2fbbc2", [:mix], [], "hexpm"},
 }
