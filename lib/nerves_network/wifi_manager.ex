@@ -376,7 +376,17 @@ defmodule Nerves.Network.WiFiManager do
 
     Logger.info("Register Nerves.WpaSupplicant #{inspect(state.ifname)}")
     {:ok, _} = Registry.register(Nerves.WpaSupplicant, state.ifname, [])
-    wpa_supplicant_settings = parse_settings(state.settings)
+
+    wpa_supplicant_settings =
+      state.settings
+      |> Map.new()
+      |> Map.drop([
+        :ipv4_address_method,
+        :ipv4_address,
+        :ipv4_subnet_mask,
+        :domain,
+        :nameservers
+      ])
 
     case Nerves.WpaSupplicant.set_network(pid, wpa_supplicant_settings) do
       :ok ->
@@ -394,28 +404,6 @@ defmodule Nerves.Network.WiFiManager do
 
     %Nerves.Network.WiFiManager{state | wpa_pid: pid}
   end
-
-  defp parse_settings(settings) when is_list(settings) do
-    settings
-    |> Map.new()
-    |> Map.take([:ssid, :key_mgmt, :psk])
-    |> parse_settings
-  end
-
-  defp parse_settings(settings = %{key_mgmt: key_mgmt}) when is_binary(key_mgmt) do
-    %{settings | key_mgmt: String.to_atom(key_mgmt)}
-    |> parse_settings
-  end
-
-  # Detect when the use specifies no WiFi security but supplies a
-  # key anyway. This confuses wpa_supplicant and causes the failure
-  # described in #39.
-  defp parse_settings(settings = %{key_mgmt: :NONE, psk: _psk}) do
-    Map.delete(settings, :psk)
-    |> parse_settings
-  end
-
-  defp parse_settings(settings), do: settings
 
   @spec stop_udhcpc(t) :: t
   defp stop_udhcpc(state) do
