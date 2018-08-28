@@ -21,27 +21,23 @@ defmodule Nerves.Network.IFSupervisor do
     setup(to_string(ifname), settings)
   end
 
-  def setup(ifname, settings) do
+  def setup(ifname, settings)
+    when is_atom(ifname)
+    when is_list(settings) do
     pidname = pname(ifname)
-
-    if !Process.whereis(pidname) do
-      manager_module = manager(if_type(ifname), settings)
-      child = worker(manager_module, [ifname, settings, [name: pidname]], id: pidname)
-      Supervisor.start_child(__MODULE__, child)
-    else
-      {:error, :already_added}
-    end
+    manager_module = manager(if_type(ifname), settings)
+    child = worker(manager_module, [ifname, settings, [name: pidname]], id: pidname)
+    Supervisor.start_child(__MODULE__, child)
   end
 
-  @spec teardown(Types.ifname()) :: :ok | {:error, :not_started}
+  @spec teardown(Types.ifname()) ::
+    :ok | {:error, any} | :not_found | :simple_one_for_one | :running | :restarting
   def teardown(ifname) do
     pidname = pname(ifname)
 
-    if Process.whereis(pidname) do
-      Supervisor.terminate_child(__MODULE__, pidname)
-      Supervisor.delete_child(__MODULE__, pidname)
-    else
-      {:error, :not_started}
+    case Supervisor.terminate_child(__MODULE__, pidname) do
+      :ok -> Supervisor.delete_child(__MODULE__, pidname)
+      er -> er
     end
   end
 
