@@ -131,6 +131,8 @@ defmodule Nerves.Network.StaticManager do
     |> goto_context(:up)
   end
 
+  defp consume(:down, :ifadded, state), do: state
+
   defp consume(:down, :ifdown, state), do: state
 
   defp consume(:down, :ifremoved, state) do
