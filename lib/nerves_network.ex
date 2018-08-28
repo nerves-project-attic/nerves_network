@@ -46,13 +46,35 @@ defmodule Nerves.Network do
     * `:key_mgmt` - e.g., `:"WPA-PSK"` or `:NONE`
     * `:psk` - e.g., "my-secret-wlan-key"
 
-  See `t(#{__MODULE__}.setup_setting)` for more info.
-  """
-  @spec setup(Types.ifname(), setup_settings) :: :ok
-  def setup(ifname, settings \\ []) do
-    Logger.debug("#{__MODULE__} setup(#{ifname}, #{inspect(settings)})")
-    {:ok, {_new, _old}} = Nerves.Network.Config.put(ifname, settings)
+  See [the type info](Nerves.Network.html#t:setup_settings/0) for more info.
+
+  Returns `:ok` or `{:error, reason}` if there is an error.
+  currently the only error that gets checked is if the interface doesn't exist.
+
+  ## Waiting for an interface to come up
+  Nerves.Network versions before `0.3.7` would simply return `:ok` on _any_ interface even if it
+  did not exist.
+  This means the user will now have to monitor their own interface and wait for
+  it to come up.
+
+  ```
+  def wait_for_interface_up(interface) do
+    unless iface in Nerves.NetworkInterface.interfaces() do
+      wait_for_interface_up(interface)
+    end
     :ok
+  end
+  ```
+  """
+  @spec setup(Types.ifname(), setup_settings) :: :ok | {:error, term}
+  def setup(ifname, settings \\ []) do
+    if ifname in Nerves.NetworkInterface.interfaces() do
+      Logger.debug("#{__MODULE__} setup(#{ifname}, #{inspect(settings)})")
+      {:ok, {_new, _old}} = Nerves.Network.Config.put(ifname, settings)
+      :ok
+    else
+      {:error, :no_interface}
+    end
   end
 
   @doc """
