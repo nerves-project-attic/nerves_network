@@ -77,12 +77,12 @@ defmodule Nerves.Network.Config do
   end
 
   defp changes(new, old) do
-    added = Enum.filter(new, fn {k, _} -> Map.get(old, k) == nil end)
-    removed = Enum.filter(old, fn {k, _} -> Map.get(new, k) == nil end)
+    added = Enum.filter(new, fn {k, _} -> old[k] == nil end)
+    removed = Enum.filter(old, fn {k, _} -> new[k] == nil end)
 
     modified =
       Enum.filter(new, fn {k, v} ->
-        val = Map.get(old, k)
+        val = old[k]
         val != nil and val != v
       end)
 
