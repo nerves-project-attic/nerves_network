@@ -46,8 +46,8 @@ defmodule Nerves.Network.Config do
     {:noreply, s}
   end
 
-  def update(old, old, _) do
-    {old, []}
+  def update(old, old) do
+    old
   end
 
   def update(new, old) do
