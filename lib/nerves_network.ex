@@ -26,9 +26,7 @@ defmodule Nerves.Network do
           | {:ipv4_subnet_mask, Types.ip_address()}
           | {:domain, String.t()}
           | {:nameservers, [Types.ip_address()]}
-          | {:ssid, String.t()}
-          | {:key_mgmt, :"WPA-PSK" | :NONE}
-          | {:psk, String.t()}
+          | {atom, any()}
 
   @typedoc "Keyword List settings to `setup/2`"
   @type setup_settings :: [setup_setting]
