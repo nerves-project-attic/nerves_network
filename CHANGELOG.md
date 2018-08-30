@@ -1,5 +1,7 @@
 # Changelog
-## v0.3.7-dev
+## v0.3.8-dev
+
+## v0.3.7
   * Add typespecs for all the moving parts.
     * Small refactors relating to this.
   * Run Elixir code formatter.
