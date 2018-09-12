@@ -1,5 +1,7 @@
 # Changelog
 ## v0.3.8-dev
+  * Enhancements
+    * Removed wifi credentials from Logger.
 
 ## v0.3.7
   * Add typespecs for all the moving parts.
