@@ -21,7 +21,7 @@ end
 has a networking example that can get you started.
 
 [nerves_init_gadget](https://github.com/nerves-project/nerves_init_gadget) also
-sets can setup networking for wired ethernet connections and usb gadgets such
+can setup networking for wired ethernet connections and usb gadgets such
 as beaglebone boards and raspberry pi 0.
 
 # WiFi Networking
