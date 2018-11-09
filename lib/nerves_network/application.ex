@@ -6,6 +6,7 @@ defmodule Nerves.Network.Application do
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
+    IO.puts "+++++++++ Starting #{__MODULE__}"
     [resolvconf_file: resolvconf_file] = Application.get_env(:nerves_network, :resolver, [])
 
     children = [

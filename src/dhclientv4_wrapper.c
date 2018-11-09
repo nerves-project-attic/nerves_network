@@ -253,7 +253,7 @@ static void process_dhclient_script_callback(const int argc, char *argv[])
         /* If the user tells dhclient to call this program as the script
        (-isf script option), format and print the dhclient result nicely. */
 
-    debug("%s,%s,%s,%s,%s,%s,%s,%s\n",
+    fprintf(stderr, "%s,%s,%s,%s,%s,%s,%s,%s\n",
             getenv_nonull("reason"),
             getenv_nonull("interface"),
             getenv_nonull("new_ip_address"),
