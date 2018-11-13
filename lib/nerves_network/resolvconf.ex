@@ -266,6 +266,14 @@ defmodule Nerves.Network.Resolvconf do
   end
   defp nameserver6_text(_), do: ""
 
+defp file_write(filename, []) do
+  File.write!(filename, [""])
+end
+
+defp file_write(filename, list) do
+  File.write!(filename, list)
+end
+
   #By default there are 3 nameservers supported by the Linux resolver. A typical configuration (for IPv4/IPv6 dual stack) would look like this:
   #/etc/resolv.conf:
   #  nameserver 8.8.8.8
@@ -299,7 +307,7 @@ defmodule Nerves.Network.Resolvconf do
     Logger.debug fn -> "#{__MODULE__}: nameservers        = #{inspect nameservers}" end
     Logger.debug fn -> "#{__MODULE__}: nameservers6       = #{inspect nameservers6}" end
 
-    File.write!(state.filename, domains ++ static_nameservers ++ nameservers ++ nameservers6)
+    file_write(state.filename, domains ++ static_nameservers ++ nameservers ++ nameservers6)
   end
 
 

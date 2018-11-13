@@ -176,10 +176,17 @@ defmodule Nerves.Network.DHCPv6Manager do
   defp consume(:dhcpv6, {:deconfig, _info}, state), do: state
 
   defp consume(:dhcpv6, {:bound, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :bound info: #{inspect info}" end
+    Logger.debug fn -> "#{__MODULE__}: consume :dhcp6 :bound info: #{inspect info}" end
     state
       |> configure(info)
-      |> goto_context(:up)
+      |> goto_context(:dhcpv6)
+  end
+
+  defp consume(:dhcpv6, {:renew, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :dhcp6 :renew info: #{inspect info}" end
+    state
+      |> configure(info)
+      |> goto_context(:dhcpv6)
   end
 
 
@@ -189,8 +196,15 @@ defmodule Nerves.Network.DHCPv6Manager do
       |> stop_dhclient
       |> start_link_local
       |> goto_context(:up)
-
   end
+
+  defp consume(:dhcpv6, {:expire, info}, state) do
+    Logger.debug fn -> "#{__MODULE__}: consume :up :expire info: #{inspect info}" end
+    :no_resolv_conf
+      |> configure(state, info)
+      |> goto_context(:up)
+  end
+
   defp consume(:dhcpv6, :ifdown, state) do
     state
       |> stop_dhclient
@@ -213,34 +227,32 @@ defmodule Nerves.Network.DHCPv6Manager do
   defp consume(:up, {:leasefail, _info}, state), do: state
 
   defp consume(:up, {:bound, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :bound info: #{inspect info}" end
-    :no_resolv_conf
-      |> configure(state, info)
+    Logger.debug fn -> "#{__MODULE__}: consume :up :bound info: #{inspect info}" end
+      configure(state, info)
+      |> goto_context(:dhcpv6)
   end
 
   defp consume(:up, {:renew, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :renew info: #{inspect info}" end
-    :no_resolv_conf
-      |> configure(state, info)
-      |> goto_context(:up)
+    Logger.debug fn -> "#{__MODULE__}: consume :up :renew info: #{inspect info}" end
+      configure(state, info)
+      |> goto_context(:dhcpv6)
   end
 
   defp consume(:up, {:rebind, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :rebind info: #{inspect info}" end
-    :no_resolv_conf
+    Logger.debug fn -> "#{__MODULE__}: consume :up :rebind info: #{inspect info}" end
       |> configure(state, info)
-      |> goto_context(:up)
+      |> goto_context(:dhcpv6)
   end
 
   defp consume(:up, {:release, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :release info: #{inspect info}" end
+    Logger.debug fn -> "#{__MODULE__}: consume :up :release info: #{inspect info}" end
     :no_resolv_conf
       |> configure(state, info)
       |> goto_context(:up)
   end
 
   defp consume(:up, {:expire, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume :expire info: #{inspect info}" end
+    Logger.debug fn -> "#{__MODULE__}: consume :up :expire info: #{inspect info}" end
     :no_resolv_conf
       |> configure(state, info)
       |> goto_context(:up)
