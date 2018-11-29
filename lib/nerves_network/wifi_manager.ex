@@ -330,9 +330,20 @@ defmodule Nerves.Network.WiFiManager do
   end
 
   defp consume(:up, :wifi_disconnected, state) do
+    if is_pid(state.wpa_pid) do
+      Nerves.WpaSupplicant.reassociate(state.wpa_pid)
+    end
+
     state
     |> stop_udhcpc
     |> goto_context(:associate_wifi)
+  end
+
+  defp consume(:up, :wifi_connected, state) do
+    state
+    |> stop_udhcpc
+    |> setup_ip_settings
+    |> goto_context(:dhcp)
   end
 
   @spec stop_wpa(t) :: t
@@ -388,22 +399,66 @@ defmodule Nerves.Network.WiFiManager do
         :nameservers
       ])
 
-    case Nerves.WpaSupplicant.set_network(pid, wpa_supplicant_settings) do
-      :ok ->
-        :ok
+    networks = parse_settings(wpa_supplicant_settings)
 
-      error ->
-        Logger.info(
-          "WiFiManager(#{state.ifname}, #{state.context}) wpa_supplicant set_network error: #{
-            inspect(error)
-          }"
-        )
+    Nerves.WpaSupplicant.remove_all_networks(pid)
 
-        notify(Nerves.WpaSupplicant, state.ifname, error, %{ifname: state.ifname})
+    for network <- networks do
+      case Nerves.WpaSupplicant.add_network(pid, network) do
+        {:ok, _} ->
+          :ok
+
+        error ->
+          Logger.info(
+            "WiFiManager(#{state.ifname}, #{state.context}) wpa_supplicant add_network error: #{
+              inspect(error)
+            }"
+          )
+
+          notify(Nerves.WpaSupplicant, state.ifname, error, %{ifname: state.ifname})
+      end
     end
+
+    Nerves.WpaSupplicant.reassociate(pid)
 
     %Nerves.Network.WiFiManager{state | wpa_pid: pid}
   end
+
+  # This allows supplying a list of networks
+  defp parse_settings(%{networks: networks}) when is_list(networks) do
+    networks
+    |> Enum.map(&parse_network/1)
+  end
+
+  # This is the original API for supplying a single
+  # network.
+  # Example %{ssid: "hello", psk: "secret", key_mgmt: :"WPA-PSK"}
+  defp parse_settings(%{} = settings), do: [settings]
+
+  # If network is passed in as a list, convert it to a map.
+  # Example: [ssid: "hello", psk: "secret", key_mgmt: :"WPA-PSK"]
+  defp parse_network(network) when is_list(network) do
+    network
+    |> Map.new()
+    |> parse_network()
+  end
+
+  # Convert `key_mgmt` to an atom if supplied as binary.
+  # TODO(Connor) - This should be done for :wep_key0..3 and :wep_tx_keyidx
+  defp parse_network(settings = %{key_mgmt: key_mgmt}) when is_binary(key_mgmt) do
+    %{settings | key_mgmt: String.to_atom(key_mgmt)}
+    |> parse_settings
+  end
+
+  # Detect when the user specifies no WiFi security but supplies a
+  # key anyway. This confuses wpa_supplicant and causes the failure
+  # described in #39.
+  defp parse_network(settings = %{key_mgmt: :NONE, psk: _psk}) do
+    Map.delete(settings, :psk)
+    |> parse_settings
+  end
+
+  defp parse_network(%{} = settings), do: settings
 
   @spec stop_udhcpc(t) :: t
   defp stop_udhcpc(state) do

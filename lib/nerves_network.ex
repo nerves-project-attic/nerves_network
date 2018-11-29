@@ -9,6 +9,13 @@ defmodule Nerves.Network do
 
       Nerves.Network.setup "wlan0", ssid: "myssid", key_mgmt: :"WPA-PSK", psk: "secretsecret"
 
+  To configure multiple wireless networks, nest a list of wireless
+  configurations under the `:networks` key:
+
+      Nerves.Network.setup "wlan0", networks: [
+        [ssid: "myssid", key_mgmt: :"WPA-PSK", psk: "secretsecret"],
+        [ssid: "myotherssid", key_mgmt: :"WPA-PSK", psk: "othersecret", priority: 10]]
+
   When you boot your Nerves image, Nerves.Network monitors for an interface
   called "wlan0" to be created. This occurs when you plug in a USB WiFi dongle.
   If you plug in more than one WiFi dongle, each one will be given a name like
@@ -26,10 +33,18 @@ defmodule Nerves.Network do
           | {:ipv4_subnet_mask, Types.ip_address()}
           | {:domain, String.t()}
           | {:nameservers, [Types.ip_address()]}
-          | {atom, any()}
+          | {:networks, [[wifi_settings]]}
+          | wifi_settings
 
   @typedoc "Keyword List settings to `setup/2`"
   @type setup_settings :: [setup_setting]
+
+  @typedoc "WiFi Settings"
+  @type wifi_settings ::
+          {:ssid, String.t()}
+          | {:key_mgmt, :"WPA-PSK" | :NONE}
+          | {:psk, String.t()}
+          | {:priority, non_neg_integer}
 
   @doc """
   Configure the specified interface. Settings contains one or more of the
