@@ -26,8 +26,9 @@ config :nerves_network, :dhclient,
 
 config :nerves_network, :dhclientv4,
   ipv4: [
-    lease_file: "/root/dhclient4.leases",
-    pid_file:   "/root/dhclient4.pid"
+    lease_file:  "/root/dhclient4.leases",
+    pid_file:    "/root/dhclient4.pid",
+    config_file: "/root/dhclient4.conf"
   ]
 
 config :nerves_network, :resolver,
