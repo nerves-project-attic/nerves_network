@@ -10,6 +10,9 @@ defmodule Nerves.Network.Dhclientv4Conf do
     request subnet-mask, broadcast-address, time-offset, routers, domain-name, domain-name-servers, host-name;
     require subnet-mask;
   }
+
+  Any runtime change to the dhclient.conf(5) file requires dhclient to be restarted for the changes to become
+  effective.
   """
 
   use GenServer
@@ -209,7 +212,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
   @doc false
   def init(filename) do
     state = %{filename: filename, ifmap: %{}}
-    twrite_dhclient_conf(state)
+    write_dhclient_conf(state)
     Logger.debug("#{__MODULE__}: filename = #{inspect filename}: state = #{inspect state}")
     {:ok, state}
   end
