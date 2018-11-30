@@ -104,11 +104,11 @@ defmodule Nerves.Network.Dhclientv4Conf do
       end
       |> Enum.join(", ")
 
-    "  " <> prefix <> " " <> items_string <> ";\n"
+    "  " <> prefix <> " " <> items_string <> termination
   end
 
-  @spec config_list_entry_text(atom(), Types.ifname, ifmap) :: String.t
-  defp config_list_entry_text(item_name, ifname, ifmap) when is_atom(item_name) and item_name in [:request, :require] do
+  @spec config_list_entry_text(atom(), ifmap) :: String.t
+  defp config_list_entry_text(item_name, ifmap) when is_atom(item_name) and item_name in [:request, :require] do
     case ifmap[item_name] do
       [] -> ""
       nil -> ""
@@ -116,20 +116,20 @@ defmodule Nerves.Network.Dhclientv4Conf do
     end
   end
 
-  @spec request_text(Types.ifname, ifmap) :: String.t
-  defp request_text(ifname, ifmap) do
+  @spec request_text(ifmap) :: String.t
+  defp request_text(ifmap) do
     #request subnet-mask, broadcast-address, time-offset, routers, domain-name, domain-name-servers, host-name;
-    config_list_entry_text(:request, ifname, ifmap)
+    config_list_entry_text(:request, ifmap)
   end
 
-  @spec require_text(Types.ifname, ifmap) :: String.t
-  defp require_text(ifname, ifmap) do
+  @spec require_text(ifmap) :: String.t
+  defp require_text(ifmap) do
     #require subnet-mask;
-    config_list_entry_text(:require, ifname, ifmap)
+    config_list_entry_text(:require, ifmap)
   end
 
 
-  defp dhclient_config_template(ifname, state) do
+  defp dhclient_config_template(ifname, ifmap) do
     """
     interface "<%= @interface %>" {
     <%= if @host_name do %>  send host-name "<%= @host_name %>";<% end %>
@@ -137,8 +137,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
     <%= if @client_identifier do %>  send dhcp-client-identifier "<%= @client_identifier %>";<% end %>
     <%= if @user_class do %>  send user-class "<%= @user_class %>";<% end %>
     """
-    <> request_text(ifname, state)
-    <> require_text(ifname, state)
+    <> request_text(ifmap)
+    <> require_text(ifmap)
     <> end_interface_text()
   end
 
@@ -167,8 +167,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
     File.write!(filename, list)
   end
 
-  @spec write_dhclient_conf(String.t, %{filename: Path.t, ifmap: ifmap | map}) :: :ok
-  defp write_dhclient_conf(ifname, state) do
+  @spec write_dhclient_conf(%{filename: Path.t, ifmap: ifmap | map}) :: :ok
+  defp write_dhclient_conf(state) do
     Logger.debug fn -> "#{__MODULE__}: write_dhclient_conf state = #{inspect state}" end
 
     contents = Enum.map(state.ifmap, &construct_contents/1)
@@ -202,15 +202,15 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
     state = update_state(item_name, ifname, value, state)
 
-    write_dhclient_conf(ifname, state)
+    write_dhclient_conf(state)
     {:reply, :ok, state}
   end
 
   @doc false
   def init(filename) do
     state = %{filename: filename, ifmap: %{}}
-    #write_dhclient_conf(state)
-    Logger.debug("+++ #{__MODULE__}: filename = #{inspect filename}: state = #{inspect state}")
+    twrite_dhclient_conf(state)
+    Logger.debug("#{__MODULE__}: filename = #{inspect filename}: state = #{inspect state}")
     {:ok, state}
   end
 
