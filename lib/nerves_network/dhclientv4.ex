@@ -80,7 +80,7 @@ defmodule Nerves.Network.Dhclientv4 do
     end
   end
 
-  defp runtime_config_file_path(ifname, runtime) do
+  defp runtime_config_file_path(_ifname, runtime) do
     #Config file contains entries for all managed interfaces
     Keyword.get(runtime, :config_file)
   end
