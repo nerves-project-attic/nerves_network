@@ -47,6 +47,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   @dhclient_conf_path "/etc/dhclientv4.conf"
 
+  @server_name __MODULE__
+
   @doc """
   Default `dhclientv4.conf` path for this system.
   """
@@ -66,29 +68,29 @@ defmodule Nerves.Network.Dhclientv4Conf do
   @doc """
   Set the search domain for non fully qualified domain name lookups.
   """
-  @spec set_vendor_class_id(dhclient_conf_t, Types.ifname, String.t) :: :ok
-  def set_vendor_class_id(dhclient_conf, ifname, vendor_class_id) do
-    GenServer.call(dhclient_conf, {:set, :vendor_class_identifier, ifname, vendor_class_id})
+  @spec set_vendor_class_id(Types.ifname, String.t) :: :ok
+  def set_vendor_class_id(ifname, vendor_class_id) do
+    GenServer.call(@server_name, {:set, :vendor_class_identifier, ifname, vendor_class_id})
   end
 
-  @spec set_client_id(dhclient_conf_t, Types.ifname, String.t) :: :ok
-  def set_client_id(dhclient_conf, ifname, client_id) do
-    GenServer.call(dhclient_conf, {:set, :client_identifier, ifname, client_id})
+  @spec set_client_id(Types.ifname, String.t) :: :ok
+  def set_client_id(ifname, client_id) do
+    GenServer.call(@server_name, {:set, :client_identifier, ifname, client_id})
   end
 
-  @spec set_user_class(dhclient_conf_t, Types.ifname, String.t) :: :ok
-  def set_user_class(dhclient_conf, ifname, user_class) do
-    GenServer.call(dhclient_conf, {:set, :user_class, ifname, user_class})
+  @spec set_user_class(Types.ifname, String.t) :: :ok
+  def set_user_class(ifname, user_class) do
+    GenServer.call(@server_name, {:set, :user_class, ifname, user_class})
   end
 
-  @spec set_request_list(dhclient_conf_t, Types.ifname, list(String.t)) :: :ok
-  def set_request_list(dhclient_conf, ifname, request_list) do
-    GenServer.call(dhclient_conf, {:set, :request, ifname, request_list})
+  @spec set_request_list(Types.ifname, list(String.t)) :: :ok
+  def set_request_list(ifname, request_list) do
+    GenServer.call(@server_name, {:set, :request, ifname, request_list})
   end
 
-  @spec set_require_list(dhclient_conf_t, Types.ifname, list(String.t)) :: :ok
-  def set_require_list(dhclient_conf, ifname, require_list) do
-    GenServer.call(dhclient_conf, {:set, :require, ifname, require_list})
+  @spec set_require_list(Types.ifname, list(String.t)) :: :ok
+  def set_require_list(ifname, require_list) do
+    GenServer.call(@server_name, {:set, :require, ifname, require_list})
   end
 
   ## GenServer
@@ -132,7 +134,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
   end
 
 
-  defp dhclient_config_template(ifname, ifmap) do
+  defp dhclient_config_template(_ifname, ifmap) do
     """
     interface "<%= @interface %>" {
     <%= if @host_name do %>  send host-name "<%= @host_name %>";<% end %>
