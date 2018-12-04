@@ -7,13 +7,9 @@ defmodule Nerves.Network.Application do
     import Supervisor.Spec, warn: false
 
     [resolvconf_file: resolvconf_file] = Application.get_env(:nerves_network, :resolver, [])
-    [ipv4: 
-     [
-       lease_file: _lf,
-       pid_file: _pf,
-       config_file: dhclientv4_config_file
-     ]
-    ] = Application.get_env(:nerves_network, :dhclientv4, [])
+    [ipv4: ipv4] = Application.get_env(:nerves_network, :dhclientv4, [])
+
+    dhclientv4_config_file = ipv4[:config_file] || Dhclientv4Conf.default_dhclient_conf_path()
 
     children = [
       supervisor(Registry, [:duplicate, Nerves.Dhclientv4], id: Nerves.Dhclientv4),
