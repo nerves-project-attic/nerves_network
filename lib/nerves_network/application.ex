@@ -2,14 +2,16 @@ defmodule Nerves.Network.Application do
   @moduledoc false
 
   use Application
+  require Logger
 
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
+    Logger.configure level: :debug
     [resolvconf_file: resolvconf_file] = Application.get_env(:nerves_network, :resolver, [])
     [ipv4: ipv4] = Application.get_env(:nerves_network, :dhclientv4, [])
 
-    dhclientv4_config_file = ipv4[:config_file] || Dhclientv4Conf.default_dhclient_conf_path()
+    dhclientv4_config_file = ipv4[:config_file] || Nerves.Network.Dhclientv4Conf.default_dhclient_conf_path()
 
     children = [
       supervisor(Registry, [:duplicate, Nerves.Dhclientv4], id: Nerves.Dhclientv4),
