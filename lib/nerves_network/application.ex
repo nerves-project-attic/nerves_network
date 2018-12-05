@@ -7,7 +7,6 @@ defmodule Nerves.Network.Application do
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
-    Logger.configure level: :debug
     [resolvconf_file: resolvconf_file] = Application.get_env(:nerves_network, :resolver, [])
     [ipv4: ipv4] = Application.get_env(:nerves_network, :dhclientv4, [])
 
