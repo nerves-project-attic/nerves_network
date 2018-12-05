@@ -99,7 +99,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
   @type state :: %{ifname: Types.ifname, ifmap: ifmap}
 
   @spec end_interface_text() :: String.t
-  defp end_interface_text(), do: "};\n"
+  defp end_interface_text(), do: "}\n"
 
   @spec end_option_text() :: String.t
   defp end_option_text(), do: "  send end 255;\n"
