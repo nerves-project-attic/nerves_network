@@ -26,8 +26,6 @@ defmodule Nerves.Network.IFSupervisor do
   end
 
   def setup(ifname, settings) do
-    pidname = pname(ifname)
-
     manager_modules = managers(if_type(ifname), settings)
     Logger.debug fn -> "#{__MODULE__} manager_modules: #{inspect manager_modules}" end
 

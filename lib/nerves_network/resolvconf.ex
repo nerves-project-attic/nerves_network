@@ -266,13 +266,13 @@ defmodule Nerves.Network.Resolvconf do
   end
   defp nameserver6_text(_), do: ""
 
-defp file_write(filename, []) do
-  File.write!(filename, [""])
-end
+  defp file_write(filename, []) do
+    File.write!(filename, [""])
+  end
 
-defp file_write(filename, list) do
-  File.write!(filename, list)
-end
+  defp file_write(filename, list) do
+    File.write!(filename, list)
+  end
 
   #By default there are 3 nameservers supported by the Linux resolver. A typical configuration (for IPv4/IPv6 dual stack) would look like this:
   #/etc/resolv.conf:

@@ -64,12 +64,25 @@ defmodule Nerves.Network.Dhclientv4 do
     input_str <> "." <> ifname
   end
 
+  defp runtime_config_file(ifname, runtime) do
+    if Keyword.has_key?(runtime, :config_file) do
+      ["-cf", runtime_config_file_path(ifname, runtime)]
+    else
+      []
+    end
+  end
+
   defp runtime_lease_file(ifname, runtime) do
     if Keyword.has_key?(runtime, :lease_file) do
       ["-lf", runtime_lease_file_path(ifname, runtime)]
     else
       []
     end
+  end
+
+  defp runtime_config_file_path(_ifname, runtime) do
+    #Config file contains entries for all managed interfaces
+    Keyword.get(runtime, :config_file)
   end
 
   defp runtime_lease_file_path(ifname, runtime) do
@@ -87,8 +100,12 @@ defmodule Nerves.Network.Dhclientv4 do
   # Parsing config.exs entry of the following format: [dhclient: [lease_file: "/var/lib/dhclient4.leases", pid_file: "/var//run/dhclient4.pid"]]
   defp dhclient_runtime(ifname) do
     runtime = runtime()
+
     Logger.debug("#{__MODULE__}: runtime options = #{inspect(runtime)}")
-    runtime_lease_file(ifname, runtime) ++ runtime_pid_file(ifname, runtime)
+
+    runtime_lease_file(ifname, runtime)
+      ++ runtime_pid_file(ifname, runtime)
+      ++ runtime_config_file(ifname, runtime)
   end
 
   defp runtime() do
