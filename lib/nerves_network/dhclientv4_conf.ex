@@ -120,7 +120,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
     case ifmap[item_name] do
       [] -> ""
       nil -> ""
-      list -> list_of_atoms_to_comma_separated_strings(list, to_string(item_name), ";")
+      list -> list_of_atoms_to_comma_separated_strings(list, to_string(item_name), ";\n")
     end
   end
 
