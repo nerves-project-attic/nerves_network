@@ -99,7 +99,10 @@ defmodule Nerves.Network.Dhclientv4Conf do
   @type state :: %{ifname: Types.ifname, ifmap: ifmap}
 
   @spec end_interface_text() :: String.t
-  defp end_interface_text(), do: "}\n"
+  defp end_interface_text(), do: "};\n"
+
+  @spec end_option_text() :: String.t
+  defp end_option_text(), do: "  send end 255;\n"
 
   @spec list_of_atoms_to_comma_separated_strings(list(dhcp_option), String.t, String.t) :: String.t
   defp list_of_atoms_to_comma_separated_strings(list, prefix, termination) do
@@ -135,16 +138,26 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
 
   defp dhclient_config_template(_ifname, ifmap) do
-    """
-    interface "<%= @interface %>" {
-    <%= if @host_name do %>  send host-name "<%= @host_name %>";<% end %>
-    <%= if @vendor_class_identifier do %>  send vendor-class-identifier "<%= @vendor_class_identifier %>";<% end %>
-    <%= if @client_identifier do %>  send dhcp-client-identifier "<%= @client_identifier %>";<% end %>
-    <%= if @user_class do %>  send user-class "<%= @user_class %>";<% end %>
+    ~s"""
+    interface "<%= @interface %>" {\n\
+    <%= if @host_name do %>  send host-name "<%= @host_name %>";\n<% end %>\
+    <%= if @vendor_class_identifier do %>  send vendor-class-identifier "<%= @vendor_class_identifier %>";\n<% end %>\
+    <%= if @client_identifier do %>  send dhcp-client-identifier "<%= @client_identifier %>";\n<% end %>\
+    <%= if @user_class do %>  send user-class "<%= @user_class %>";\n<% end %>\
     """
     <> request_text(ifmap)
     <> require_text(ifmap)
+    <> end_option_text()
     <> end_interface_text()
+  end
+
+  # DHCPv4 sorcery - without the end option 255 sent some servers may ignore the requests considering
+  # DHCP packets as malformed.
+  @spec outermost_options_definitions() :: String.t()
+  defp outermost_options_definitions() do
+    """
+    option end code 255 = integer 8;\n
+    """
   end
 
   @spec construct_contents({Types.ifname, ifmap} | any) :: String.t
@@ -176,7 +189,10 @@ defmodule Nerves.Network.Dhclientv4Conf do
   defp write_dhclient_conf(state) do
     Logger.debug fn -> "#{__MODULE__}: write_dhclient_conf state = #{inspect state}" end
 
-    contents = Enum.map(state.ifmap, &construct_contents/1)
+    contents =
+      [
+        outermost_options_definitions() | Enum.map(state.ifmap, &construct_contents/1)
+      ]
 
     Logger.debug("+++++++ Contents +++++++")
     Logger.debug("#{inspect contents}")
