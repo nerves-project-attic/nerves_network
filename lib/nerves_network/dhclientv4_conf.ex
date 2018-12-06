@@ -93,6 +93,11 @@ defmodule Nerves.Network.Dhclientv4Conf do
     GenServer.call(@server_name, {:set, :require, ifname, require_list})
   end
 
+  @spec clear(Types.ifname) :: :ok
+  def clear(ifname) do
+    GenServer.call(@server_name, {:clear, ifname})
+  end
+
   ## GenServer
 
   @typedoc "State of the server."
@@ -225,6 +230,15 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
     write_dhclient_conf(state)
     {:reply, :ok, state}
+  end
+
+  def handle_call({:clear, ifname}, _from, state) do
+    Logger.debug("#{__MODULE__}: :clear state = #{inspect state}")
+
+    new_state = %{state | ifmap: Map.put(state.ifmap, ifname, %{})}
+
+    write_dhclient_conf(new_state)
+    {:reply, :ok, new_state}
   end
 
   @doc false
