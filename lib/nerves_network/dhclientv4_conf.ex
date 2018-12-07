@@ -127,13 +127,18 @@ defmodule Nerves.Network.Dhclientv4Conf do
     GenServer.call(@server_name, {:set, :require, ifname, require_list})
   end
 
+  @spec clear(Types.ifname) :: :ok
+  def clear(ifname) do
+    GenServer.call(@server_name, {:clear, ifname})
+  end
+
   ## GenServer
 
   @typedoc "State of the server."
   @type state :: %{ifname: Types.ifname, ifmap: ifmap}
 
   @spec end_interface_text() :: String.t
-  defp end_interface_text(), do: "};\n"
+  defp end_interface_text(), do: "}\n"
 
   @spec list_of_atoms_to_comma_separated_strings(list(dhcp_option), String.t, String.t) :: String.t
   defp list_of_atoms_to_comma_separated_strings(list, prefix, termination) do
@@ -151,7 +156,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
     case ifmap[item_name] do
       [] -> ""
       nil -> ""
-      list -> list_of_atoms_to_comma_separated_strings(list, to_string(item_name), ";")
+      list -> list_of_atoms_to_comma_separated_strings(list, to_string(item_name), ";\n")
     end
   end
 
@@ -253,6 +258,15 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
     write_dhclient_conf(state)
     {:reply, :ok, state}
+  end
+
+  def handle_call({:clear, ifname}, _from, state) do
+    Logger.debug("#{__MODULE__}: :clear state = #{inspect state}")
+
+    new_state = %{state | ifmap: Map.put(state.ifmap, ifname, %{})}
+
+    write_dhclient_conf(new_state)
+    {:reply, :ok, new_state}
   end
 
   @doc false
