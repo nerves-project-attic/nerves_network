@@ -79,8 +79,42 @@ defmodule Nerves.Network.Dhclientv4Conf do
   end
 
   @spec set_user_class(Types.ifname, String.t) :: :ok
+  @doc """
+  RFC 3004             The User Class Option for DHCP        November 2000
+  The format of this option is as follows:
+
+         Code   Len   Value
+        +-----+-----+---------------------  . . .  --+
+        | 77  |  N  | User Class Data ('Len' octets) |
+        +-----+-----+---------------------  . . .  --+
+
+   where Value consists of one or more instances of User Class Data.
+   Each instance of User Class Data is formatted as follows:
+
+
+
+
+
+
+         UC_Len_i     User_Class_Data_i
+        +--------+------------------------  . . .  --+
+        |  L_i   | Opaque-Data ('UC_Len_i' octets)   |
+        +--------+------------------------  . . .  --+
+
+   Each User Class value (User_Class_Data_i) is indicated as an opaque
+   field.  The value in UC_Len_i does not include the length field
+   itself and MUST be non-zero.  Let m be the number of User Classes
+   carried in the option.  The length of the option as specified in Len
+   must be the sum of the lengths of each of the class names plus m:
+   Len= UC_Len_1 + UC_Len_2 + ... + UC_Len_m + m.  If any instances of
+   User Class Data are present, the minimum value of Len is two (Len =
+   UC_Len_1 + 1 = 1 + 1 = 2).
+
+   The Code for this option is 77.
+  """
   def set_user_class(ifname, user_class) do
-    GenServer.call(@server_name, {:set, :user_class, ifname, user_class})
+    user_class_obj = to_string([String.length(user_class) | String.to_charlist(user_class)])
+    GenServer.call(@server_name, {:set, :user_class, ifname, user_class_obj})
   end
 
   @spec set_request_list(Types.ifname, list(String.t)) :: :ok
@@ -100,9 +134,6 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   @spec end_interface_text() :: String.t
   defp end_interface_text(), do: "};\n"
-
-  @spec end_option_text() :: String.t
-  defp end_option_text(), do: "  send end 255;\n"
 
   @spec list_of_atoms_to_comma_separated_strings(list(dhcp_option), String.t, String.t) :: String.t
   defp list_of_atoms_to_comma_separated_strings(list, prefix, termination) do
@@ -147,16 +178,13 @@ defmodule Nerves.Network.Dhclientv4Conf do
     """
     <> request_text(ifmap)
     <> require_text(ifmap)
-    <> end_option_text()
     <> end_interface_text()
   end
 
-  # DHCPv4 sorcery - without the end option 255 sent some servers may ignore the requests considering
-  # DHCP packets as malformed.
+  # This is a placeholder for eventual future custom DHCP options definitions
   @spec outermost_options_definitions() :: String.t()
   defp outermost_options_definitions() do
     """
-    option end code 255 = integer 8;\n
     """
   end
 
