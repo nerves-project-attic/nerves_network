@@ -23,6 +23,9 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   @type dhclient_conf_t :: GenServer.server
 
+  @ethernet_10MB "01"
+  @eui64         "1b"
+
   @type ifmap :: %{
     host_name: String.t,
     vendor_class_identifier: String.t,
@@ -36,7 +39,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
   The dhcp_option type specifies the options that can be requested (nice to have ) and/or required by the DHCP client
   to accept the lease.
   """
-  @type dhcp_option :: :"subnet-mask"
+  @type dhcp_option ::
+    :"subnet-mask"
     | :"broadcast-address"
     | :"time-offset"
     | :"routers"
@@ -44,6 +48,10 @@ defmodule Nerves.Network.Dhclientv4Conf do
     | :"domain-search"
     | :"domain-name-servers"
     | :"host-name"
+    | :"ntp-servers"
+    | :"vendor-encapsulated-options"
+    | :"dhcp-renewal-time"
+    | :"dhcp-rebinding-time"
 
   @dhclient_conf_path "/etc/dhclientv4.conf"
 
@@ -178,7 +186,11 @@ defmodule Nerves.Network.Dhclientv4Conf do
     interface "<%= @interface %>" {\n\
     <%= if @host_name do %>  send host-name "<%= @host_name %>";\n<% end %>\
     <%= if @vendor_class_identifier do %>  send vendor-class-identifier "<%= @vendor_class_identifier %>";\n<% end %>\
+    <%= if @hardware_type do %>\
+    <%= if @client_identifier do %>  send dhcp-client-identifier <%= @client_identifier %>;\n<% end %>\
+    <% else %>\
     <%= if @client_identifier do %>  send dhcp-client-identifier "<%= @client_identifier %>";\n<% end %>\
+    <% end %>\
     <%= if @user_class do %>  send user-class "<%= @user_class %>";\n<% end %>\
     """
     <> request_text(ifmap)
@@ -204,7 +216,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
             vendor_class_identifier: nil,
             client_identifier: nil,
             user_class: nil,
-            host_name: nil
+            host_name: nil,
+            hardware_type: false
         ]
         |> Keyword.merge( Map.to_list(ifmap) )
         |> Keyword.merge(interface: ifname) )
@@ -234,13 +247,41 @@ defmodule Nerves.Network.Dhclientv4Conf do
     file_write(state.filename, contents)
   end
 
-  @spec update_state(atom(), Types.ifname, String.t, state) :: state
-  defp update_state(item_name, ifname, value, state)  do
+  @spec update_item(atom(), Types.ifname, String.t(), state) :: state
+  defp update_item(item_name, ifname, value, state)  do
     new_ifentry = state.ifmap
                     |> Map.get(ifname, %{})
                     |> Map.merge(%{item_name => value})
 
     %{state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
+  end
+
+  @spec prefix_client_id(String.t()) :: String.t()
+  defp prefix_client_id(value) do
+    cond do
+      Nerves.Network.Utils.is_mac_eui_48?(value) -> @ethernet_10MB <> ":" <> value
+      Nerves.Network.Utils.is_mac_eui_64?(value) -> @eui64 <> ":" <> value
+      true -> value
+    end
+  end
+  @spec update_state(atom(), Types.ifname, String.t(), state) :: state
+  #For client_identifier we shall specify if this is a harware type (MAC address: EUI 48 or 64)
+  #Full list of types is here: https://www.iana.org/assignments/arp-parameters/arp-parameters.xhtml
+  #Or as defined in https://tools.ietf.org/html/rfc5342
+  defp update_state(item_name = :client_identifier, ifname, value, state)  do
+    hardware_type = Nerves.Network.Utils.is_mac_eui_48?(value) or Nerves.Network.Utils.is_mac_eui_64?(value)
+
+    new_state = update_item(item_name, ifname, prefix_client_id(value), state)
+
+    new_ifentry = new_state.ifmap
+                    |> Map.get(ifname, %{})
+                    |> Map.merge(%{:hardware_type => hardware_type})
+
+    %{new_state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
+  end
+
+  defp update_state(item_name, ifname, value, state)  do
+    update_item(item_name, ifname, value, state)
   end
 
   def handle_call({:set, item_name, ifname, value}, _from, state) when is_atom(item_name) and
