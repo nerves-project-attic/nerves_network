@@ -23,6 +23,9 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   @type dhclient_conf_t :: GenServer.server
 
+  @ethernet_10MB "01"
+  @eui64         "1b"
+
   @type ifmap :: %{
     host_name: String.t,
     vendor_class_identifier: String.t,
@@ -36,7 +39,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
   The dhcp_option type specifies the options that can be requested (nice to have ) and/or required by the DHCP client
   to accept the lease.
   """
-  @type dhcp_option :: :"subnet-mask"
+  @type dhcp_option ::
+    :"subnet-mask"
     | :"broadcast-address"
     | :"time-offset"
     | :"routers"
@@ -44,6 +48,10 @@ defmodule Nerves.Network.Dhclientv4Conf do
     | :"domain-search"
     | :"domain-name-servers"
     | :"host-name"
+    | :"ntp-servers"
+    | :"vendor-encapsulated-options"
+    | :"dhcp-renewal-time"
+    | :"dhcp-rebinding-time"
 
   @dhclient_conf_path "/etc/dhclientv4.conf"
 
@@ -79,8 +87,42 @@ defmodule Nerves.Network.Dhclientv4Conf do
   end
 
   @spec set_user_class(Types.ifname, String.t) :: :ok
+  @doc """
+  RFC 3004             The User Class Option for DHCP        November 2000
+  The format of this option is as follows:
+
+         Code   Len   Value
+        +-----+-----+---------------------  . . .  --+
+        | 77  |  N  | User Class Data ('Len' octets) |
+        +-----+-----+---------------------  . . .  --+
+
+   where Value consists of one or more instances of User Class Data.
+   Each instance of User Class Data is formatted as follows:
+
+
+
+
+
+
+         UC_Len_i     User_Class_Data_i
+        +--------+------------------------  . . .  --+
+        |  L_i   | Opaque-Data ('UC_Len_i' octets)   |
+        +--------+------------------------  . . .  --+
+
+   Each User Class value (User_Class_Data_i) is indicated as an opaque
+   field.  The value in UC_Len_i does not include the length field
+   itself and MUST be non-zero.  Let m be the number of User Classes
+   carried in the option.  The length of the option as specified in Len
+   must be the sum of the lengths of each of the class names plus m:
+   Len= UC_Len_1 + UC_Len_2 + ... + UC_Len_m + m.  If any instances of
+   User Class Data are present, the minimum value of Len is two (Len =
+   UC_Len_1 + 1 = 1 + 1 = 2).
+
+   The Code for this option is 77.
+  """
   def set_user_class(ifname, user_class) do
-    GenServer.call(@server_name, {:set, :user_class, ifname, user_class})
+    user_class_obj = to_string([String.length(user_class) | String.to_charlist(user_class)])
+    GenServer.call(@server_name, {:set, :user_class, ifname, user_class_obj})
   end
 
   @spec set_request_list(Types.ifname, list(String.t)) :: :ok
@@ -105,9 +147,6 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   @spec end_interface_text() :: String.t
   defp end_interface_text(), do: "}\n"
-
-  @spec end_option_text() :: String.t
-  defp end_option_text(), do: "  send end 255;\n"
 
   @spec list_of_atoms_to_comma_separated_strings(list(dhcp_option), String.t, String.t) :: String.t
   defp list_of_atoms_to_comma_separated_strings(list, prefix, termination) do
@@ -147,21 +186,22 @@ defmodule Nerves.Network.Dhclientv4Conf do
     interface "<%= @interface %>" {\n\
     <%= if @host_name do %>  send host-name "<%= @host_name %>";\n<% end %>\
     <%= if @vendor_class_identifier do %>  send vendor-class-identifier "<%= @vendor_class_identifier %>";\n<% end %>\
+    <%= if @hardware_type do %>\
+    <%= if @client_identifier do %>  send dhcp-client-identifier <%= @client_identifier %>;\n<% end %>\
+    <% else %>\
     <%= if @client_identifier do %>  send dhcp-client-identifier "<%= @client_identifier %>";\n<% end %>\
+    <% end %>\
     <%= if @user_class do %>  send user-class "<%= @user_class %>";\n<% end %>\
     """
     <> request_text(ifmap)
     <> require_text(ifmap)
-    <> end_option_text()
     <> end_interface_text()
   end
 
-  # DHCPv4 sorcery - without the end option 255 sent some servers may ignore the requests considering
-  # DHCP packets as malformed.
+  # This is a placeholder for eventual future custom DHCP options definitions
   @spec outermost_options_definitions() :: String.t()
   defp outermost_options_definitions() do
     """
-    option end code 255 = integer 8;\n
     """
   end
 
@@ -176,7 +216,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
             vendor_class_identifier: nil,
             client_identifier: nil,
             user_class: nil,
-            host_name: nil
+            host_name: nil,
+            hardware_type: false
         ]
         |> Keyword.merge( Map.to_list(ifmap) )
         |> Keyword.merge(interface: ifname) )
@@ -206,13 +247,41 @@ defmodule Nerves.Network.Dhclientv4Conf do
     file_write(state.filename, contents)
   end
 
-  @spec update_state(atom(), Types.ifname, String.t, state) :: state
-  defp update_state(item_name, ifname, value, state)  do
+  @spec update_item(atom(), Types.ifname, String.t(), state) :: state
+  defp update_item(item_name, ifname, value, state)  do
     new_ifentry = state.ifmap
                     |> Map.get(ifname, %{})
                     |> Map.merge(%{item_name => value})
 
     %{state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
+  end
+
+  @spec prefix_client_id(String.t()) :: String.t()
+  defp prefix_client_id(value) do
+    cond do
+      Nerves.Network.Utils.is_mac_eui_48?(value) -> @ethernet_10MB <> ":" <> value
+      Nerves.Network.Utils.is_mac_eui_64?(value) -> @eui64 <> ":" <> value
+      true -> value
+    end
+  end
+  @spec update_state(atom(), Types.ifname, String.t(), state) :: state
+  #For client_identifier we shall specify if this is a harware type (MAC address: EUI 48 or 64)
+  #Full list of types is here: https://www.iana.org/assignments/arp-parameters/arp-parameters.xhtml
+  #Or as defined in https://tools.ietf.org/html/rfc5342
+  defp update_state(item_name = :client_identifier, ifname, value, state)  do
+    hardware_type = Nerves.Network.Utils.is_mac_eui_48?(value) or Nerves.Network.Utils.is_mac_eui_64?(value)
+
+    new_state = update_item(item_name, ifname, prefix_client_id(value), state)
+
+    new_ifentry = new_state.ifmap
+                    |> Map.get(ifname, %{})
+                    |> Map.merge(%{:hardware_type => hardware_type})
+
+    %{new_state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
+  end
+
+  defp update_state(item_name, ifname, value, state)  do
+    update_item(item_name, ifname, value, state)
   end
 
   def handle_call({:set, item_name, ifname, value}, _from, state) when is_atom(item_name) and
