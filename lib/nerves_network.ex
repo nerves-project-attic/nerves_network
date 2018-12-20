@@ -33,18 +33,18 @@ defmodule Nerves.Network do
           | {:ipv4_subnet_mask, Types.ip_address()}
           | {:domain, String.t()}
           | {:nameservers, [Types.ip_address()]}
-          | {:networks, [[wifi_settings]]}
-          | wifi_settings
+          | {:networks, [[wifi_settings()]]}
+          | wifi_settings()
 
   @typedoc "Keyword List settings to `setup/2`"
-  @type setup_settings :: [setup_setting]
+  @type setup_settings :: [setup_setting()]
 
   @typedoc "WiFi Settings"
   @type wifi_settings ::
           {:ssid, String.t()}
           | {:key_mgmt, :"WPA-PSK" | :NONE}
           | {:psk, String.t()}
-          | {:priority, non_neg_integer}
+          | {:priority, non_neg_integer()}
 
   @doc """
   Configure the specified interface. Settings contains one or more of the
@@ -61,7 +61,7 @@ defmodule Nerves.Network do
 
   See `t(#{__MODULE__}.setup_setting)` for more info.
   """
-  @spec setup(Types.ifname(), setup_settings) :: :ok
+  @spec setup(Types.ifname(), setup_settings()) :: :ok
   def setup(ifname, settings \\ []) do
     Logger.debug("#{__MODULE__} setup(#{ifname})")
     {:ok, {_new, _old}} = Nerves.Network.Config.put(ifname, settings)
