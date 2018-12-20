@@ -1,7 +1,7 @@
 language: erlang
 
 sudo: required
-dist: trusty
+dist: xenial
 
 otp_release:
     - 21.0
