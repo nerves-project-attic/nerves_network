@@ -409,7 +409,7 @@ defmodule Nerves.Network.WiFiManager do
           :ok
 
         error ->
-          Logger.info(
+          Logger.error(
             "WiFiManager(#{state.ifname}, #{state.context}) wpa_supplicant add_network error: #{
               inspect(error)
             }"
