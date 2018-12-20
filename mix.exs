@@ -4,7 +4,7 @@ defmodule Nerves.Network.Mixfile do
   def project do
     [
       app: :nerves_network,
-      version: "0.3.8-dev",
+      version: "0.4.0",
       elixir: "~> 1.4",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
@@ -43,7 +43,6 @@ defmodule Nerves.Network.Mixfile do
         "Makefile",
         "docs/*.md"
       ],
-      maintainers: ["Frank Hunleth", "Justin Schneck", "Connor Rigby"],
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/nerves-project/nerves_network"}
     }
