@@ -56,6 +56,53 @@ config :nerves_network, :default,
 
 If you are using an older version (`< 0.3.0`) of `nerves_runtime` then you'll need to do some additional setup to load the correct kernel module for WiFi. See [this page](OLD_NERVES_RUNTIME.md) for more information.
 
+## WiFi Networking Priority
+
+If you have more than one possible network, and you would like to automatically
+connect the highest priority one you can:
+
+```elixir
+settings = [
+  networks: [
+    [ssid: "FirstPriority", psk: "superSecret", key_mgmt: :"WPA-PSK", priority: 100],
+    [ssid: "SettleForThisOne", psk: "StillSecret", key_mgmt: :"WPA-PSK", priority: 10],
+    [ssid: "ConnectIfThoseOtherOnesArentAvailable", key_mgmt: :NONE, priority: 0,
+      ipv4_address_method: :static,
+      ipv4_address: "10.0.0.2", ipv4_subnet_mask: "255.255.0.0",
+      domain: "mycompany.com", nameservers: ["8.8.8.8", "8.8.4.4"],
+    ]
+  ]
+]
+
+# Now you can either use `default` or runtime setup.
+
+## Default
+use Mix.Config
+config :nerves_network, default: [
+  wlan0: settings,
+  eth0: []
+]
+
+## Runtime
+Nerves.Network.setup("wlan0", settings)
+```
+
+## WiFi Network host mode
+WpaSupplicant supports WiFi host mode (`mode: 2`). This means it will create an 
+access point rather than connect to one. example settings for this:
+
+```elixir
+settings = [
+  networks: [
+    # Note the final `d` in `dhcpd`
+    # this will start `OneDHCPD` on the interface.
+    [ssid: "NervesAP", psk: "supersecret", key_mgmt: :"WPA-PSK", mode: 2,
+     ipv4_address_method: :dhcpd] 
+  ]
+]
+Nerves.Network.setup("wlan0", settings)
+```
+
 ## Scanning
 
 You can scan by running:

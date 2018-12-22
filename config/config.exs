@@ -8,6 +8,4 @@ config :nerves_network, :default,
     psk: System.get_env("NERVES_NETWORK_PSK"),
     key_mgmt: String.to_atom(key_mgmt)
   ],
-  eth0: [
-    ipv4_address_method: :dhcp
-  ]
+  eth0: []
