@@ -47,17 +47,23 @@ defmodule Nerves.Network do
           | {:priority, non_neg_integer()}
 
   @doc """
-  Configure the specified interface. Settings contains one or more of the
-  following:
+  Configure the specified interface. 
+    
+    ## Common settings
+    Settings contains one or more of the following IP address settings:
 
-    * `:ipv4_address_method` - `:dhcp`, `:static`, or `:linklocal`
+    * `:ipv4_address_method` - `:dhcp`, `:dhcpd`, `:static`, or `:linklocal`
     * `:ipv4_address` - e.g., "192.168.1.5" (specify when :ipv4_address_method = :static)
     * `:ipv4_subnet_mask` - e.g., "255.255.255.0" (specify when :ipv4_address_method = :static)
     * `:domain` - e.g., "mycompany.com" (specify when :ipv4_address_method = :static)
     * `:nameservers` - e.g., ["8.8.8.8", "8.8.4.4"] (specify when :ipv4_address_method = :static)
-    * `:ssid` - "My WiFi AP" (specify if this is a wireless interface)
-    * `:key_mgmt` - e.g., `:"WPA-PSK"` or `:NONE`
-    * `:psk` - e.g., "my-secret-wlan-key"
+
+    ## WiFi settings
+    * `networks` - a list of one or more network settings. Should contain
+      one or more of the following settings:
+      * `:ssid` - "My WiFi AP" (specify if this is a wireless interface)
+      * `:key_mgmt` - e.g., `:"WPA-PSK"` or `:NONE`
+      * `:psk` - e.g., "my-secret-wlan-key"
 
   See `t(#{__MODULE__}.setup_setting)` for more info.
   """
