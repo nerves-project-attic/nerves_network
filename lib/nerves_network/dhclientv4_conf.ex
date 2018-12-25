@@ -86,7 +86,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
     GenServer.call(@server_name, {:set, :client_identifier, ifname, client_id})
   end
 
-  @spec set_user_class(Types.ifname, String.t) :: :ok
+  @spec set_user_class(Types.ifname, String.t() | nil) :: :ok
   @doc """
   RFC 3004             The User Class Option for DHCP        November 2000
   The format of this option is as follows:
@@ -120,6 +120,10 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
    The Code for this option is 77.
   """
+  def set_user_class(ifname, user_class = nil) do
+    GenServer.call(@server_name, {:set, :user_class, ifname, user_class})
+  end
+
   def set_user_class(ifname, user_class) do
     user_class_obj = to_string([String.length(user_class) | String.to_charlist(user_class)])
     GenServer.call(@server_name, {:set, :user_class, ifname, user_class_obj})
@@ -264,10 +268,15 @@ defmodule Nerves.Network.Dhclientv4Conf do
       true -> value
     end
   end
-  @spec update_state(atom(), Types.ifname, String.t(), state) :: state
+  @spec update_state(atom(), Types.ifname, String.t() | nil, state) :: state
   #For client_identifier we shall specify if this is a harware type (MAC address: EUI 48 or 64)
   #Full list of types is here: https://www.iana.org/assignments/arp-parameters/arp-parameters.xhtml
   #Or as defined in https://tools.ietf.org/html/rfc5342
+
+  defp update_state(item_name = :client_identifier, ifname, value = nil, state)  do
+    update_item(item_name, ifname, value, state)
+  end
+
   defp update_state(item_name = :client_identifier, ifname, value, state)  do
     hardware_type = Nerves.Network.Utils.is_mac_eui_48?(value) or Nerves.Network.Utils.is_mac_eui_64?(value)
 
