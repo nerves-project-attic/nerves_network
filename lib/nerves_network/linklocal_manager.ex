@@ -87,6 +87,12 @@ defmodule Nerves.Network.LinkLocalManager do
     :noop
   end
 
+  def handle_call(:teardown, _from, s) do
+    s = consume(s.context, :teardown, s)
+    Logger.debug("LinkLocalManager(#{s.ifname}, #{s.context}) got event :teardown")
+    {:reply, :ok, s}
+  end
+
   def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
     event = handle_registry_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
@@ -142,6 +148,20 @@ defmodule Nerves.Network.LinkLocalManager do
   defp consume(:up, :ifup, state), do: state
 
   defp consume(:up, :ifdown, state) do
+    goto_context(state, :down)
+  end
+
+  defp consume(_, :teardown, state) do
+    scope(state.ifname)
+    |> SystemRegistry.update(%{ipv4_address: "0.0.0.0"})
+
+    clear = [
+      ipv4_address: "0.0.0.0",
+      domain: nil,
+      nameservers: []
+    ]
+
+    :ok = Nerves.NetworkInterface.setup(state.ifname, clear)
     goto_context(state, :down)
   end
 

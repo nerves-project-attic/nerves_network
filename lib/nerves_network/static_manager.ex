@@ -48,6 +48,12 @@ defmodule Nerves.Network.StaticManager do
     {:ok, state}
   end
 
+  def handle_call(:teardown, _, s) do
+    s = consume(s.context, :teardown, s)
+    Logger.info("StaticManager(#{s.ifname}, #{s.context}) got event :teardown")
+    {:reply, :ok, s}
+  end
+
   def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
     event = handle_registry_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
@@ -153,6 +159,12 @@ defmodule Nerves.Network.StaticManager do
 
   defp consume(:up, :ifadded, state), do: state
 
+  defp consume(_, :teardown, state) do
+    state
+    |> deconfigure()
+    |> goto_context(:down)
+  end
+
   @spec configure(t) :: t
   defp configure(state) do
     :ok = Nerves.NetworkInterface.setup(state.ifname, state.settings)
@@ -162,6 +174,13 @@ defmodule Nerves.Network.StaticManager do
 
   @spec deconfigure(t) :: t
   defp deconfigure(state) do
+    clear = [
+      ipv4_address: "0.0.0.0",
+      domain: nil,
+      nameservers: []
+    ]
+
+    :ok = Nerves.NetworkInterface.setup(state.ifname, clear)
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end

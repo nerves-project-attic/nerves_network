@@ -210,9 +210,15 @@ defmodule Nerves.Network.WiFiManager do
     :noop
   end
 
+  def handle_call(:teardown, _from, s) do
+    Logger.debug("WiFiManager(#{s.ifname}, #{s.context}) got event :teardown")
+    s = consume(s.context, :teardown, s)
+    {:reply, :ok, s}
+  end
+
   # This happens when we are managing a wireless interface, but we haven't got
   # the `ifup` event yet.
-  def handle_call(_call, _from, %{wpa_pid: nil} = s) do
+  def handle_call(_, _from, %{wpa_pid: nil} = s) do
     {:reply, {:error, :wpa_not_started}, s}
   end
 
@@ -380,6 +386,13 @@ defmodule Nerves.Network.WiFiManager do
     |> stop_dhcp
     |> setup_ip_settings
     |> goto_context(:dhcp)
+  end
+
+  defp consume(_, :teardown, state) do
+    state
+    |> stop_dhcp()
+    |> stop_wpa()
+    |> goto_context(:down)
   end
 
   @spec stop_wpa(t) :: t

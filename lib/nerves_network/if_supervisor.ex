@@ -35,6 +35,10 @@ defmodule Nerves.Network.IFSupervisor do
   def teardown(ifname) do
     pidname = pname(ifname)
 
+    if pid = Process.whereis(pidname) do
+      Process.alive?(pid) && GenServer.call(pidname, :teardown, 30_000)
+    end
+
     case Supervisor.terminate_child(__MODULE__, pidname) do
       :ok -> Supervisor.delete_child(__MODULE__, pidname)
       er -> er
