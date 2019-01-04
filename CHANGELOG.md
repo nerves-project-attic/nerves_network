@@ -1,4 +1,17 @@
 # Changelog
+## v0.5.0
+
+* Enhancements
+  * Support individual IP settings for each WiFi network priority.
+* Bug Fixes
+  * Disconnecting from WiFi will unset IP settings.
+    * [#90](https://github.com/nerves-project/nerves_network/issues/90)
+    * [#35](https://github.com/nerves-project/nerves_network/issues/35)
+    * [#26](https://github.com/nerves-project/nerves_network/issues/26)
+    * [#22](https://github.com/nerves-project/nerves_network/issues/22)
+  * Calling `setup` from IEx will now set a new Network
+    * [#92](https://github.com/nerves-project/nerves_network/issues/92)
+
 ## v0.4.0
 
 * Enhancements
