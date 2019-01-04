@@ -26,14 +26,26 @@ defmodule Nerves.Network.Dhclientv4Conf do
   @ethernet_10MB "01"
   @eui64         "1b"
 
+  @typedoc """
+  The ifmap type is a map that can be an any subset of the fields listed below
+  """
   @type ifmap :: %{
     host_name: String.t,
     vendor_class_identifier: String.t,
     client_identifier: String.t,
     user_class: String.t,
     request: list(String.t),
-    require: list(String.t)
+    require: list(String.t),
+    fqdn: String.t,
+    fqdn_server_update: String.t,
+    fqdn_encoding: String.t,
+    also_request: list(list(String.t))
   }
+  | map()
+
+  @type on_off_flip :: :on | :off
+  @type server_update :: on_off_flip()
+  @type fqdn_encoding :: on_off_flip()
 
   @typedoc """
   The dhcp_option type specifies the options that can be requested (nice to have ) and/or required by the DHCP client
@@ -52,6 +64,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
     | :"vendor-encapsulated-options"
     | :"dhcp-renewal-time"
     | :"dhcp-rebinding-time"
+    | :"fqdn"
+    | :"dhcp6.fqdn"
 
   @dhclient_conf_path "/etc/dhclientv4.conf"
 
@@ -129,9 +143,83 @@ defmodule Nerves.Network.Dhclientv4Conf do
     GenServer.call(@server_name, {:set, :user_class, ifname, user_class_obj})
   end
 
+  @spec set_fqdn(Types.ifname, String.t) :: :ok
+  @doc """
+  Function is meant for the DDNS support.
+  Returns `:ok`.
+
+  ## Parameters
+  - ifname: Network interface name
+  - fqdn: Fully qualified domain name as specified in https://tools.ietf.org/rfc/rfc1535.txt
+
+  ## Examples
+
+        iex> set_fqdn("eth0", "fully.qualified.domain.name.org.")
+
+  """
+  def set_fqdn(ifname, fqdn) do
+    GenServer.call(@server_name, {:set, :fqdn, ifname, fqdn})
+  end
+
+  @spec set_fqdn_server_update(Types.ifname, server_update()) :: :ok
+  @doc """
+  Function is meant for the DDNS support.
+  Returns `:ok`.
+
+  ## Parameters
+  - ifname: Network interface name
+  - fqdn_server_update: "on" | "off" string
+
+  ## Examples
+
+        iex> set_fqdn_server_update("eth0", :on)
+        :ok
+
+  """
+  def set_fqdn_server_update(ifname, server_update = :on) do
+    GenServer.call(@server_name, {:set, :fqdn_server_update, ifname, to_string(server_update)})
+  end
+
+  def set_fqdn_server_update(ifname, server_update = :off) do
+    GenServer.call(@server_name, {:set, :fqdn_server_update, ifname, to_string(server_update)})
+  end
+
+  @spec set_fqdn_encoding(Types.ifname, fqdn_encoding()) :: :ok
+  @doc """
+  Function is meant for the DDNS support.
+  Returns `:ok`.
+
+  ## Parameters
+  - ifname: Network interface name
+  - fqdn_encoding: :on | :off
+
+  ## Examples
+
+        iex> set_fqdn_encoding("eth0", :on)
+        :ok
+
+  """
+  def set_fqdn_encoding(ifname, encoding = :on) do
+    GenServer.call(@server_name, {:set, :fqdn_encoding, ifname, to_string(encoding)})
+  end
+
+  def set_fqdn_encoding(ifname, encoding = :off) do
+    GenServer.call(@server_name, {:set, :fqdn_encoding, ifname, to_string(encoding)})
+  end
+
   @spec set_request_list(Types.ifname, list(String.t)) :: :ok
   def set_request_list(ifname, request_list) do
     GenServer.call(@server_name, {:set, :request, ifname, request_list})
+  end
+
+  @spec add_also_request(Types.ifname, list(String.t)) :: :ok
+  def add_also_request(ifname, request_list) do
+    GenServer.call(@server_name, {:add_to, :also_request, ifname, request_list})
+  end
+
+  @spec set_also_request(Types.ifname, list(list(String.t)) | [] | nil) :: :ok
+  def set_also_request(ifname, request_list) do
+    GenServer.call(@server_name, {:set, :also_request, ifname, request_list})
   end
 
   @spec set_require_list(Types.ifname, list(String.t)) :: :ok
@@ -178,6 +266,25 @@ defmodule Nerves.Network.Dhclientv4Conf do
     config_list_entry_text(:request, ifmap)
   end
 
+  defp also_request_entry([]), do: ""
+  defp also_request_entry(item) when is_list(item) do
+    list_of_atoms_to_comma_separated_strings(item, "also request", ";\n")
+  end
+
+  defp also_request_text(nil), do: ""
+  defp also_request_text([]), do: ""
+  defp also_request_text(list) when is_list(list) do
+    for item <- list do
+      also_request_entry(item)
+    end
+    |> Enum.join("")
+  end
+
+  @spec also_request_text(ifmap) :: String.t
+  defp also_request_text(ifmap) do
+    also_request_text(ifmap[:also_request])
+  end
+
   @spec require_text(ifmap) :: String.t
   defp require_text(ifmap) do
     #require subnet-mask;
@@ -196,8 +303,13 @@ defmodule Nerves.Network.Dhclientv4Conf do
     <%= if @client_identifier do %>  send dhcp-client-identifier "<%= @client_identifier %>";\n<% end %>\
     <% end %>\
     <%= if @user_class do %>  send user-class "<%= @user_class %>";\n<% end %>\
+    <%= if @fqdn do %>  send fqdn.fqdn "<%= @fqdn %>";\n\
+    <%= if @fqdn_encoding do %>  send fqdn.encoded <%= @fqdn_encoding %>;\n<% end %>\
+    <%= if @fqdn_server_update do %>  send fqdn.server-update <%= @fqdn_server_update %>;\n<% end %>\
+    <% end %>\
     """
     <> request_text(ifmap)
+    <> also_request_text(ifmap)
     <> require_text(ifmap)
     <> end_interface_text()
   end
@@ -221,7 +333,9 @@ defmodule Nerves.Network.Dhclientv4Conf do
             client_identifier: nil,
             user_class: nil,
             host_name: nil,
-            hardware_type: false
+            hardware_type: false,
+            fqdn: nil,
+            fqdn_server_update: nil,
         ]
         |> Keyword.merge( Map.to_list(ifmap) )
         |> Keyword.merge(interface: ifname) )
@@ -293,6 +407,16 @@ defmodule Nerves.Network.Dhclientv4Conf do
     update_item(item_name, ifname, value, state)
   end
 
+  @spec add_to_also_request(Type.ifname, list(list(String.t)) | [] | nil, state) :: state
+  defp add_to_also_request(_ifname, nil, state), do: state
+  defp add_to_also_request(_ifname, [], state), do: state
+  defp add_to_also_request(ifname, value, state) when is_list(value) do
+    ifmap = Map.get(state.ifmap, ifname, %{})
+    old_also_request = Map.get(ifmap, :"also_request", [])
+    new_ifmap = Map.merge(ifmap, %{:also_request => [ value | old_also_request ]})
+    %{state | ifmap: Map.put(state.ifmap, ifname, new_ifmap)}
+  end
+
   def handle_call({:set, item_name, ifname, value}, _from, state) when is_atom(item_name) and
     item_name in [
       :host_name,
@@ -300,11 +424,24 @@ defmodule Nerves.Network.Dhclientv4Conf do
       :client_identifier,
       :user_class,
       :request,
-      :require
+      :require,
+      :fqdn,
+      :fqdn_server_update,
+      :fqdn_encoding,
+      :also_request
     ] do
     Logger.debug("handle_call item_name = #{inspect item_name} ifname = #{ifname}; value = #{inspect value} state = #{inspect state}")
 
     state = update_state(item_name, ifname, value, state)
+
+    write_dhclient_conf(state)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:add_to, :also_request, ifname, value}, _from, state) do
+    Logger.debug("handle_call :add_to :also_request ifname = #{ifname}; value = #{inspect value} state = #{inspect state}")
+
+    state = add_to_also_request(ifname, value, state)
 
     write_dhclient_conf(state)
     {:reply, :ok, state}
