@@ -130,6 +130,12 @@ defmodule Nerves.Network.DHCPManager do
     :noop
   end
 
+  def handle_call(:teardown, _from, state) do
+    Logger.debug("DHCPManager(#{state.ifname}, #{state.context}) got event :teardown")
+    s = consume(state.context, :teardown, state)
+    {:reply, :ok, s}
+  end
+
   # Handle Network Interface events coming in from SystemRegistry.
   def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
     event = handle_registry_event(event)
@@ -190,18 +196,21 @@ defmodule Nerves.Network.DHCPManager do
 
   defp consume(:down, :ifup, state) do
     state
-    |> start_udhcpc
+    |> start_udhcpc()
+    |> deconfigure()
     |> goto_context(:dhcp)
   end
 
   defp consume(:down, :ifdown, state) do
     state
-    |> stop_udhcpc
+    |> stop_udhcpc()
+    |> deconfigure()
   end
 
   defp consume(:down, :ifremoved, state) do
     state
-    |> stop_udhcpc
+    |> stop_udhcpc()
+    |> deconfigure()
     |> goto_context(:removed)
   end
 
@@ -220,13 +229,15 @@ defmodule Nerves.Network.DHCPManager do
     dhcp_retry_timer = Process.send_after(self(), :dhcp_retry, state.dhcp_retry_interval)
 
     %{state | dhcp_retry_timer: dhcp_retry_timer}
-    |> stop_udhcpc
+    |> stop_udhcpc()
+    |> deconfigure()
     |> goto_context(:up)
   end
 
   defp consume(:dhcp, :ifdown, state) do
     state
-    |> stop_udhcpc
+    |> stop_udhcpc()
+    |> deconfigure()
     |> goto_context(:down)
   end
 
@@ -257,6 +268,13 @@ defmodule Nerves.Network.DHCPManager do
     {:ok, status} = Nerves.NetworkInterface.status(state.ifname)
     notify(Nerves.NetworkInterface, state.ifname, :ifchanged, status)
     state
+  end
+
+  defp consume(_, :teardown, state) do
+    state
+    |> stop_udhcpc()
+    |> deconfigure()
+    |> goto_context(:down)
   end
 
   # Catch-all handler for consume
@@ -291,6 +309,13 @@ defmodule Nerves.Network.DHCPManager do
 
   @spec deconfigure(t) :: t
   defp deconfigure(state) do
+    clear = [
+      ipv4_address: "0.0.0.0",
+      domain: nil,
+      nameservers: []
+    ]
+
+    :ok = Nerves.NetworkInterface.setup(state.ifname, clear)
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
