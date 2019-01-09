@@ -231,6 +231,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   ## Context: :up
+  defp consume(:up, :ifadded, state), do: state
   defp consume(:up, :ifup, state), do: state
 
   defp consume(:up, :dhcp_retry, state) do
