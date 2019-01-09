@@ -101,32 +101,32 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :bound, %{ifname: ifname} = info}) do
-    Logger.info("WiFiManager(#{ifname}): udhcp bound")
+    Logger.info("DHCPManager(#{ifname}): udhcp bound")
     {:bound, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :deconfig, %{ifname: ifname} = info}) do
-    Logger.info("WiFiManager(#{ifname}): udhcp deconfig")
+    Logger.info("DHCPManager(#{ifname}): udhcp deconfig")
     {:deconfig, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :nak, %{ifname: ifname} = info}) do
-    Logger.info("WiFiManager(#{ifname}): udhcp nak")
+    Logger.info("DHCPManager(#{ifname}): udhcp nak")
     {:nak, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :renew, %{ifname: ifname} = info}) do
-    Logger.info("WiFiManager(#{ifname}): udhcp renew")
+    Logger.info("DHCPManager(#{ifname}): udhcp renew")
     {:renew, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :leasefail, %{ifname: ifname} = info}) do
-    Logger.info("WiFiManager(#{ifname}): udhcp leasefail")
+    Logger.info("DHCPManager(#{ifname}): udhcp leasefail")
     {:leasefail, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, event, %{ifname: ifname}}) do
-    Logger.info("WiFiManager(#{ifname}): ignoring event: #{inspect(event)}")
+    Logger.info("DHCPManager(#{ifname}): ignoring event: #{inspect(event)}")
     :noop
   end
 

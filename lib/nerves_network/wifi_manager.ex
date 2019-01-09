@@ -230,7 +230,7 @@ defmodule Nerves.Network.WiFiManager do
   # # DHCP events
   # # :bound, :renew, :deconfig, :nak
   def handle_info({Nerves.Udhcpc, _, info} = event, %{ifname: ifname} = s) do
-    Logger.info("DHCPManager(#{ifname}) udhcpc #{inspect(event)}")
+    Logger.info("WiFiManager(#{ifname}) udhcpc #{inspect(event)}")
     scope(ifname) |> SystemRegistry.update(info)
     event = handle_registry_event(event)
     s = consume(s.context, event, s)
