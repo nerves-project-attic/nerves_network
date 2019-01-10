@@ -32,17 +32,14 @@ defmodule Nerves.Network.Config do
     Enum.each(defaults, fn {iface, config} ->
       iface
       |> to_string()
-      |> put(config, :default)
+      |> do_put(config, :default)
     end)
 
     {:ok, %{}}
   end
 
   def handle_call({:put, iface, config, priority}, _from, state) do
-    r =
-      scope(iface)
-      |> SR.update(config, priority: priority)
-
+    r = do_put(iface, config, priority)
     {:reply, r, state}
   end
 
@@ -55,7 +52,6 @@ defmodule Nerves.Network.Config do
   end
 
   def handle_info({:system_registry, :global, registry}, s) do
-    IO.puts("got registry")
     net_config = get_in(registry, @scope) || %{}
     s = update(net_config, s)
     {:noreply, s}
@@ -69,9 +65,6 @@ defmodule Nerves.Network.Config do
     {added, removed, modified} = changes(new, old)
     removed = Enum.map(removed, fn {k, _} -> {k, %{}} end)
     modified = added ++ modified
-
-    IO.inspect(modified, label: "modified")
-    IO.inspect(removed, label: "removed")
 
     Enum.each(modified, fn {iface, settings} ->
       # TODO(Connor): Maybe we should define a behaviour for
@@ -105,5 +98,10 @@ defmodule Nerves.Network.Config do
       end)
 
     {added, removed, modified}
+  end
+
+  defp do_put(iface, config, priority) do
+    scope(iface)
+    |> SR.update(config, priority: priority)
   end
 end
