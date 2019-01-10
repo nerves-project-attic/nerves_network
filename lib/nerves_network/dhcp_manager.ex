@@ -197,7 +197,6 @@ defmodule Nerves.Network.DHCPManager do
   defp consume(:down, :ifup, state) do
     state
     |> start_udhcpc()
-    |> deconfigure()
     |> goto_context(:dhcp)
   end
 
