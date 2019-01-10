@@ -351,8 +351,6 @@ defmodule Nerves.Network.WiFiManager do
     |> goto_context(:associate_wifi)
   end
 
-  defp consume(:dhcp, _probably_not_important, state), do: state
-
   ## Context: :up
 
   defp consume(:up, :ifup, state), do: state
@@ -398,6 +396,7 @@ defmodule Nerves.Network.WiFiManager do
   @spec stop_wpa(t) :: t
   defp stop_wpa(state) do
     if is_pid(state.wpa_pid) do
+      _ = Nerves.WpaSupplicant.remove_all_networks(state.wpa_pid)
       Nerves.WpaSupplicant.stop(state.wpa_pid)
       %Nerves.Network.WiFiManager{state | wpa_pid: nil}
     else
