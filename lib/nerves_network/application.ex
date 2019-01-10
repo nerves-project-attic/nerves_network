@@ -7,10 +7,10 @@ defmodule Nerves.Network.Application do
     import Supervisor.Spec, warn: false
 
     children = [
+      worker(Nerves.Network.Config, []),
       supervisor(Registry, [:duplicate, Nerves.Udhcpc]),
       worker(Nerves.Network.Resolvconf, ["/tmp/resolv.conf", [name: Nerves.Network.Resolvconf]]),
-      supervisor(Nerves.Network.IFSupervisor, [[name: Nerves.Network.IFSupervisor]]),
-      worker(Nerves.Network.Config, [])
+      supervisor(Nerves.Network.IFSupervisor, [[name: Nerves.Network.IFSupervisor]])
     ]
 
     opts = [strategy: :rest_for_one, name: Nerves.Network.Supervisor]

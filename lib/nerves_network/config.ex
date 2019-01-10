@@ -18,13 +18,11 @@ defmodule Nerves.Network.Config do
   @spec put(Types.ifname(), Nerves.Network.setup_settings(), atom) ::
           {:ok, {old :: map, new :: map}}
   def put(iface, config, priority \\ @priority) do
-    scope(iface)
-    |> SR.update(config, priority: priority)
+    GenServer.call(__MODULE__, {:put, iface, config, priority})
   end
 
   def drop(iface, priority \\ @priority) do
-    scope(iface)
-    |> SR.delete(priority: priority)
+    GenServer.call(__MODULE__, {:drop, iface, priority})
   end
 
   def init([]) do
@@ -40,7 +38,24 @@ defmodule Nerves.Network.Config do
     {:ok, %{}}
   end
 
+  def handle_call({:put, iface, config, priority}, _from, state) do
+    r =
+      scope(iface)
+      |> SR.update(config, priority: priority)
+
+    {:reply, r, state}
+  end
+
+  def handle_call({:drop, iface, priority}, _from, state) do
+    r =
+      scope(iface)
+      |> SR.delete(priority: priority)
+
+    {:reply, r, state}
+  end
+
   def handle_info({:system_registry, :global, registry}, s) do
+    IO.puts("got registry")
     net_config = get_in(registry, @scope) || %{}
     s = update(net_config, s)
     {:noreply, s}
@@ -54,6 +69,9 @@ defmodule Nerves.Network.Config do
     {added, removed, modified} = changes(new, old)
     removed = Enum.map(removed, fn {k, _} -> {k, %{}} end)
     modified = added ++ modified
+
+    IO.inspect(modified, label: "modified")
+    IO.inspect(removed, label: "removed")
 
     Enum.each(modified, fn {iface, settings} ->
       # TODO(Connor): Maybe we should define a behaviour for
