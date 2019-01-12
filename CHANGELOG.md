@@ -1,4 +1,10 @@
 # Changelog
+
+## v0.5.1
+
+* Bug Fixes
+  * Fix calling `teardown` and `setup` from different PIDs than original `setup` 
+
 ## v0.5.0
 
 * Enhancements
