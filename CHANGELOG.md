@@ -1,4 +1,10 @@
 # Changelog
+## v0.5.1
+
+* Bug Fixes
+  * Calling `setup` from different processes will work properly now
+  * Fix runtime exception with some combinations of settings 
+
 ## v0.5.0
 
 * Enhancements
