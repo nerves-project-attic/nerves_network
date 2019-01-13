@@ -11,7 +11,7 @@ In your firmware's `mix.exs`, add `nerves_network` to your deps for your system 
 ```elixir
 def deps(target) do
   [ system(target),
-    {:nerves_network, "~> 0.3"}
+    {:nerves_network, "~> 0.5"}
   ]
 end
 ```
