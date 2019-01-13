@@ -488,7 +488,7 @@ defmodule Nerves.Network.WiFiManager do
   # TODO(Connor) - This should be done for :wep_key0..3 and :wep_tx_keyidx
   defp parse_network(settings = %{key_mgmt: key_mgmt}) when is_binary(key_mgmt) do
     %{settings | key_mgmt: String.to_atom(key_mgmt)}
-    |> parse_settings
+    |> parse_network
   end
 
   # Detect when the user specifies no WiFi security but supplies a
@@ -496,7 +496,7 @@ defmodule Nerves.Network.WiFiManager do
   # described in #39.
   defp parse_network(settings = %{key_mgmt: :NONE, psk: _psk}) do
     Map.delete(settings, :psk)
-    |> parse_settings
+    |> parse_network
   end
 
   defp parse_network(%{} = settings) do
