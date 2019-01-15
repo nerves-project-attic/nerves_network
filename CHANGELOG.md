@@ -1,4 +1,9 @@
 # Changelog
+## v0.5.2
+
+* Bug Fixes
+  * Fix race condition when setting `default` config from application env
+
 ## v0.5.1
 
 * Bug Fixes
