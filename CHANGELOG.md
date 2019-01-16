@@ -1,4 +1,10 @@
 # Changelog
+
+## v0.5.3
+
+* Bug Fixes
+  * Fix unhandled state change from `removed` -> `deconfigure`
+
 ## v0.5.2
 
 * Bug Fixes
