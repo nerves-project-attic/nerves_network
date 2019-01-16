@@ -364,7 +364,6 @@ defmodule Nerves.Network.WiFiManager do
   defp consume(:up, :ifdown, state) do
     state
     |> stop_dhcp
-    |> deconfigure
     |> goto_context(:down)
   end
 
@@ -584,7 +583,10 @@ defmodule Nerves.Network.WiFiManager do
       nameservers: []
     ]
 
-    :ok = Nerves.NetworkInterface.setup(state.ifname, clear)
+    # This is a "best effort" call.
+    # This will be called in situations where the IF is removed or 
+    # down, which results in things like ENODEV
+    _ = Nerves.NetworkInterface.setup(state.ifname, clear)
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
