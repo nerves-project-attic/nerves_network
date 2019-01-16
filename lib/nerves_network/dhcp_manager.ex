@@ -314,7 +314,7 @@ defmodule Nerves.Network.DHCPManager do
       nameservers: []
     ]
 
-    :ok = Nerves.NetworkInterface.setup(state.ifname, clear)
+    _ = Nerves.NetworkInterface.setup(state.ifname, clear)
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
     state
   end
