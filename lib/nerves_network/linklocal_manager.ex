@@ -161,7 +161,7 @@ defmodule Nerves.Network.LinkLocalManager do
       nameservers: []
     ]
 
-    :ok = Nerves.NetworkInterface.setup(state.ifname, clear)
+    _ = Nerves.NetworkInterface.setup(state.ifname, clear)
     goto_context(state, :down)
   end
 
