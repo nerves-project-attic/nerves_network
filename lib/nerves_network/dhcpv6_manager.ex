@@ -295,9 +295,16 @@ defmodule Nerves.Network.DHCPv6Manager do
     state
   end
 
+  defp translate_ipv6_address(info = %{ipv6_address: ""}) do
+    Map.drop(info, [:ipv6_address])
+  end
+
+  defp translate_ipv6_address(info) do
+    info
+  end
+
   defp setup_iface(state, info) do
-    #state = start_link_local(state)
-    case Nerves.NetworkInterface.setup(state.ifname, info) do
+    case Nerves.NetworkInterface.setup(state.ifname, translate_ipv6_address(info)) do
       :ok -> :ok
       {:error, :eexist} -> :ok
         #It may very often happen that at the renew time we would receive the lease of the very same IP address...

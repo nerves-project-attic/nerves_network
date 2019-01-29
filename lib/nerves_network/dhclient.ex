@@ -170,6 +170,14 @@ defmodule Nerves.Network.Dhclient do
     {:reply, :ok, state}
   end
 
+  def handle_info({_pid, {:exit_status, exit_status = 0}}, state) do
+    Logger.info(
+      "dhclient exited exit_status = #{inspect(exit_status)}, state = #{inspect(state)}"
+    )
+
+    {:stop, :normal, %{state | running: false}}
+  end
+
   #  Nerves.Network.Dhclient.handle_info({#Port<0.6423>, {:exit_status, 0}}, %{ifname: "eth1", port: #Port<0.6423>})
   def handle_info({_pid, {:exit_status, exit_status}}, state) do
     Logger.error(

@@ -19,6 +19,14 @@ defmodule Nerves.Network.IFSupervisor do
     {:ok, {{:one_for_one, 10, 3600}, []}}
   end
 
+  defp restart_type(_manager = Nerves.Network.DHCPv6Manager) do
+    :transient
+  end
+
+  defp restart_type(_manager) do
+    :permanent
+  end
+
   @spec setup(Types.ifname | atom, Nerves.Network.setup_settings) :: Supervisor.on_start_child()
   def setup(ifname, settings) when is_atom(ifname) do
     log_atomized_iface_error(ifname)
@@ -32,7 +40,7 @@ defmodule Nerves.Network.IFSupervisor do
     children =
       for manager <- manager_modules  do
         child_name = pname(ifname, manager)
-        worker(manager, [ifname, settings, [name: child_name]], id: {pname(ifname), child_name})
+        worker(manager, [ifname, settings, [name: child_name]], [id: {pname(ifname), child_name}, restart: restart_type(manager)])
       end
     Logger.debug fn -> "#{__MODULE__} children: #{inspect children}" end
 
