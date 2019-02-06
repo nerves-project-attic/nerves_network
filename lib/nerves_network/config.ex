@@ -72,7 +72,7 @@ defmodule Nerves.Network.Config do
 
       # Don't match on teardown since it might not actually be up yet.
       IFSupervisor.teardown(iface)
-      {:ok, _} = IFSupervisor.setup(iface, settings)
+      {:ok, _} = IFSupervisor.setup(iface, Enum.into(settings, []))
     end)
 
     Enum.each(removed, fn {iface, _settings} ->
