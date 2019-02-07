@@ -1,26 +1,32 @@
 # Changelog
 
+## v0.5.4
+
+* Bug fixes
+  * Ensure config coming from system_registry is passed to the interface as
+    a keyword list
+
 ## v0.5.3
 
-* Bug Fixes
+* Bug fixes
   * Fix unhandled state change from `removed` -> `deconfigure`
 
 ## v0.5.2
 
-* Bug Fixes
+* Bug fixes
   * Fix race condition when setting `default` config from application env
 
 ## v0.5.1
 
-* Bug Fixes
+* Bug fixes
   * Calling `setup` from different processes will work properly now
-  * Fix runtime exception with some combinations of settings 
+  * Fix runtime exception with some combinations of settings
 
 ## v0.5.0
 
 * Enhancements
   * Support individual IP settings for each WiFi network priority.
-* Bug Fixes
+* Bug fixes
   * Disconnecting from WiFi will unset IP settings.
     * [#90](https://github.com/nerves-project/nerves_network/issues/90)
     * [#35](https://github.com/nerves-project/nerves_network/issues/35)
@@ -33,7 +39,7 @@
 
 * Enhancements
   * Removed WiFi credentials from Logger
-  * Support configuration of multiple networks. 
+  * Support configuration of multiple networks.
     See [#72](https://github.com/nerves-project/nerves_network/issues/72)
 
 ## v0.3.7
@@ -54,7 +60,7 @@
     * [#19](https://github.com/nerves-project/nerves_network/issues/19)
 
 ## v0.3.6
-  * Bug Fixes
+  * Bug fixes
     * Fix wired DHCP manager, not claiming ip address.
 
 ## v0.3.5
@@ -85,7 +91,7 @@
 
 This is the initial nerves_network release after the nerves_interim_wifi rename.
 
-  * Bug Fixes
+  * Bug fixes
     * Catch all unspecified context switches and safely return in DHCP_Manager
 
 ## v0.3.0
@@ -103,7 +109,7 @@ This is the initial nerves_network release after the nerves_interim_wifi rename.
 
 ## v0.2.1
 
-* Bug Fixes
+* Bug fixes
   * Bumped versions for dependencies
 
 ## v0.2.0
