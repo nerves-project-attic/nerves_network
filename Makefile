@@ -1,12 +1,28 @@
-# Variables to override
+# Makefile for building port binaries
 #
-# CC            C compiler. MUST be set if crosscompiling
+# Makefile targets:
+#
+# all/install   build and install the NIF
+# clean         clean build products and intermediates
+#
+# Variables to override:
+#
+# MIX_COMPILE_PATH path to the build's ebin directory
+#
+# CC            C compiler
 # CROSSCOMPILE	crosscompiler prefix, if any
-# CFLAGS        compiler flags for compiling all C files
-# LDFLAGS       linker flags for linking all binaries
-# ERL_LDFLAGS   additional linker flags for projects referencing Erlang libraries
+# CFLAGS	compiler flags for compiling all C files
+# LDFLAGS	linker flags for linking all binaries
+# ERL_LDFLAGS	additional linker flags for projects referencing Erlang libraries
 # SUDO_ASKPASS  path to ssh-askpass when modifying ownership of udhcpc_wrapper
 # SUDO          path to SUDO. If you don't want the privileged parts to run, set to "true"
+
+ifeq ($(MIX_COMPILE_PATH),)
+	$(error MIX_COMPILE_PATH should be set by elixir_make!)
+endif
+
+PREFIX = $(MIX_COMPILE_PATH)/../priv
+BUILD  = $(MIX_COMPILE_PATH)/../obj
 
 # Check that we're on a supported build platform
 ifeq ($(CROSSCOMPILE),)
@@ -18,10 +34,10 @@ ifeq ($(CROSSCOMPILE),)
         $(warning this should be done automatically.)
         $(warning .)
         $(warning Skipping C compilation unless targets explicitly passed to make.)
-	DEFAULT_TARGETS = priv
+	DEFAULT_TARGETS = $(PREFIX)
     endif
 endif
-DEFAULT_TARGETS ?= priv priv/udhcpc_wrapper
+DEFAULT_TARGETS ?= $(PREFIX) $(PREFIX)/udhcpc_wrapper
 
 LDFLAGS +=
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
@@ -36,20 +52,28 @@ else
 SUDO ?= true
 endif
 
-.PHONY: all clean
+calling_from_make:
+	mix compile
 
-all: $(DEFAULT_TARGETS)
+all: install
 
-%.o: %.c
+install: $(BUILD) $(DEFAULT_TARGETS)
+
+$(BUILD)/%.o: src/%.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-priv:
-	mkdir -p priv
-
-priv/udhcpc_wrapper: src/udhcpc_wrapper.o
+$(PREFIX)/udhcpc_wrapper: $(BUILD)/udhcpc_wrapper.o
 	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
 	# setuid root udhcpc_wrapper so that it can call udhcpc
 	SUDO_ASKPASS=$(SUDO_ASKPASS) $(SUDO) -- sh -c 'chown root:root $@; chmod +s $@'
 
+$(PREFIX):
+	mkdir -p $@
+
+$(BUILD):
+	mkdir -p $@
+
 clean:
-	rm -f priv/udhcpc_wrapper src/*.o
+	$(RM) -f $(PREFIX)/udhcpc_wrapper $(BUILD)/*.o
+
+.PHONY: all clean calling_from_make install

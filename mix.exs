@@ -6,9 +6,10 @@ defmodule Nerves.Network.Mixfile do
       app: :nerves_network,
       version: "0.5.4",
       elixir: "~> 1.4",
-      build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
-      compilers: [:elixir_make] ++ Mix.compilers(),
+      build_embedded: true,
+      compilers: [:elixir_make | Mix.compilers()],
+      make_targets: ["all"],
       make_clean: ["clean"],
       deps: deps(),
       docs: [extras: ["README.md"] ++ Path.wildcard("docs/*.md")],
@@ -54,7 +55,7 @@ defmodule Nerves.Network.Mixfile do
       {:nerves_network_interface, "~> 0.4.4"},
       {:nerves_wpa_supplicant, "~> 0.5"},
       {:one_dhcpd, "~> 0.2.0"},
-      {:elixir_make, "~> 0.4", runtime: false},
+      {:elixir_make, "~> 0.5", runtime: false},
       {:ex_doc, "~> 0.19", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5.1", only: [:dev, :test], runtime: false}
     ]
