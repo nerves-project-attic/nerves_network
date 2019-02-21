@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.5
+* Bug fixes
+  * Build C source under the `_build` directory so that changing targets
+    properly rebuilds the C code as well as the Elixir code.
+
 ## v0.5.4
 
 * Bug fixes
