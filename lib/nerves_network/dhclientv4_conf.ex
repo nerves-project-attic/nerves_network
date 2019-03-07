@@ -317,8 +317,14 @@ defmodule Nerves.Network.Dhclientv4Conf do
   # This is a placeholder for eventual future custom DHCP options definitions
   @spec outermost_options_definitions() :: String.t()
   defp outermost_options_definitions() do
-    """
-    """
+    #The retry statement determines the time that must pass after the client has determined that there is no DHCP server present before it tries again
+    #to contact a DHCP server. By default, this is five minutes.
+    "retry 33;\n"
+    #When the client is restarted, it first tries to reacquire the last address it had. This is called the INIT-REBOOT state.
+    #If it is still attached to the same network it was attached to when it last ran, this is the quickest way to get started.
+    #The reboot statement sets the time that must elapse after the client first tries to reacquire its old address before it gives up
+    #and tries to discover a new address. By default, the reboot timeout is ten seconds.
+    <> "reboot 9;\n"
   end
 
   @spec construct_contents({Types.ifname, ifmap} | any) :: String.t
