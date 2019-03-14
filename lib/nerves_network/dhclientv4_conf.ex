@@ -26,6 +26,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
   @ethernet_10MB "01"
   @eui64         "1b"
 
+
   @typedoc """
   The ifmap type is a map that can be an any subset of the fields listed below
   """
@@ -67,6 +68,18 @@ defmodule Nerves.Network.Dhclientv4Conf do
     | :"fqdn"
     | :"dhcp6.fqdn"
 
+  @type protocol_timing_setting ::
+    :timeout
+    | :retry
+    | :reboot
+    | :select_timeout
+    | :initial_interval
+
+  @type protocol_timing ::
+    %{
+      optional(protocol_timing_setting()) => integer(),
+    }
+
   @dhclient_conf_path "/etc/dhclientv4.conf"
 
   @server_name __MODULE__
@@ -77,6 +90,19 @@ defmodule Nerves.Network.Dhclientv4Conf do
   @spec default_dhclient_conf_path :: Path.t
   def default_dhclient_conf_path do
     @dhclient_conf_path
+  end
+
+  # Returns a map containing default timing settings for a DHCP client
+  # for further details please see the 'Protocol Timing Section' of https://www.isc.org/wp-content/uploads/2017/08/dhcp41clientconf.html .
+  @spec
+  defp timing_defaults() do
+    %{
+      :timeout => 33,
+      :retry => 33,
+      :reboot => 9,
+      :select_timeout => 3,
+      :initial_interval => 2
+    }
   end
 
   @doc """
@@ -155,7 +181,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
   ## Examples
 
         iex> set_fqdn("eth0", "fully.qualified.domain.name.org.")
-
+        :ok
   """
   def set_fqdn(ifname, fqdn) do
     GenServer.call(@server_name, {:set, :fqdn, ifname, fqdn})
@@ -227,15 +253,44 @@ defmodule Nerves.Network.Dhclientv4Conf do
     GenServer.call(@server_name, {:set, :require, ifname, require_list})
   end
 
+  @spec set_timing(protocol_timing()) :: :ok
+  def set_timing(timing) do
+    GenServer.call(@server_name, {:set, :timing, timing})
+  end
+
   @spec clear(Types.ifname) :: :ok
   def clear(ifname) do
     GenServer.call(@server_name, {:clear, ifname})
   end
 
+  @spec set_protocol_timing(protocol_timing()) :: :ok
+  @doc """
+  Function is meant for setting the DHCP timing
+  Returns `:ok`.
+
+  ## Parameters
+  - timing: A map containing set of timing settings see @type protocol_timing_setting
+
+  ## Examples
+
+        iex> set_protocol_timing(
+        ...> %{
+        ...>   :timeout => 33,
+        ...>   :retry => 33,
+        ...>   :reboot => 9,
+        ...>   :"select-timeout" => 3,
+        ...>   :"initial-interval" => 2
+        ...> })
+        :ok
+  """
+  def set_protocol_timing(timing) do
+    GenServer.call(@server_name, {:set, :timing, timing})
+  end
+
   ## GenServer
 
   @typedoc "State of the server."
-  @type state :: %{ifname: Types.ifname, ifmap: ifmap}
+  @type state :: %{ifname: Types.ifname, ifmap: ifmap, timing: protocol_timing()}
 
   @spec end_interface_text() :: String.t
   defp end_interface_text(), do: "}\n"
@@ -291,8 +346,18 @@ defmodule Nerves.Network.Dhclientv4Conf do
     config_list_entry_text(:require, ifmap)
   end
 
+  @spec dhclient_timing_config_template(protocol_timing()) :: String.t()
+  defp dhclient_timing_config_template(timing) do
+    ~s"""
+    <%= if @timeout do %>timeout <%= @timeout%>;\n<% end %>\
+    <%= if @retry do %>retry <%= @retry%>;\n<% end %>\
+    <%= if @reboot do %>reboot <%= @reboot%>;\n<% end %>\
+    <%= if @select_timeout do %>select-timeout <%= @select_timeout%>;\n<% end %>\
+    <%= if @initial_interval do %>initial-interval <%= @initial_interval%>;\n<% end %>
+    """
+  end
 
-  defp dhclient_config_template(_ifname, ifmap) do
+  defp dhclient_iface_config_template(_ifname, ifmap) do
     ~s"""
     interface "<%= @interface %>" {\n\
     <%= if @host_name do %>  send host-name "<%= @host_name %>";\n<% end %>\
@@ -315,30 +380,33 @@ defmodule Nerves.Network.Dhclientv4Conf do
   end
 
   # This is a placeholder for eventual future custom DHCP options definitions
-  @spec outermost_options_definitions() :: String.t()
-  defp outermost_options_definitions() do
-    #The retry statement determines the time that must pass after the client has determined that there is no DHCP server present before it tries again
-    #to contact a DHCP server. By default, this is five minutes.
-    #"retry 33;\n"
-    #When the client is restarted, it first tries to reacquire the last address it had. This is called the INIT-REBOOT state.
-    #If it is still attached to the same network it was attached to when it last ran, this is the quickest way to get started.
-    #The reboot statement sets the time that must elapse after the client first tries to reacquire its old address before it gives up
-    #and tries to discover a new address. By default, the reboot timeout is ten seconds.
-    #<> "reboot 9;\n"
-    """
-    timeout 33;
-    retry 33;
-    reboot 9;
-    select-timeout 3;
-    initial-interval 2;\n
-    """
+  @spec outermost_options_definitions(state) :: String.t()
+  defp outermost_options_definitions(state) do
+    dhclient_timing_config_template(state[:timing])
+    |> EEx.eval_string(
+        assigns: [
+            timeout: nil,
+            retry: nil,
+            reboot: nil,
+            select_timeout: nil,
+            initial_interval: nil,
+        ]
+        |> Keyword.merge( Map.to_list(state[:timing]) )
+    )
+        #"""
+        #    timeout 33;
+        #    retry 33;
+        #    reboot 9;
+        #    select-timeout 3;
+        #    initial-interval 2;\n
+        #    """
   end
 
   @spec construct_contents({Types.ifname, ifmap} | any) :: String.t
   defp construct_contents({ifname, ifmap}) do
     Logger.debug("construct_contents[#{ifname}]: ifmap = #{inspect ifmap}")
 
-    dhclient_config_template(ifname, ifmap)
+    dhclient_iface_config_template(ifname, ifmap)
     |> EEx.eval_string(
         assigns: [
             interface: ifname,
@@ -368,7 +436,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
     contents =
       [
-        outermost_options_definitions() | Enum.map(state.ifmap, &construct_contents/1)
+        outermost_options_definitions(state)
+        | Enum.map(state.ifmap, &construct_contents/1)
       ]
 
     Logger.debug("+++++++ Contents +++++++")
@@ -402,6 +471,15 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   defp update_state(item_name = :client_identifier, ifname, value = nil, state)  do
     update_item(item_name, ifname, value, state)
+  end
+
+  @spec update_state(atom(), protocol_timing() | nil, state) :: state
+  defp update_state(item_name = :timing, value = nil, state)  do
+    %{state | timing: %{}}
+  end
+
+  defp update_state(item_name = :timing, value, state)  do
+    %{state | timing: value}
   end
 
   defp update_state(item_name = :client_identifier, ifname, value, state)  do
@@ -451,6 +529,15 @@ defmodule Nerves.Network.Dhclientv4Conf do
     {:reply, :ok, state}
   end
 
+  def handle_call({:set, item_name = :timing, value}, _from, state) do
+    Logger.debug("handle_call item_name = #{inspect item_name}; value = #{inspect value} state = #{inspect state}")
+
+    state = update_state(item_name, value, state)
+
+    write_dhclient_conf(state)
+    {:reply, :ok, state}
+  end
+
   def handle_call({:add_to, :also_request, ifname, value}, _from, state) do
     Logger.debug("handle_call :add_to :also_request ifname = #{ifname}; value = #{inspect value} state = #{inspect state}")
 
@@ -471,7 +558,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   @doc false
   def init(filename) do
-    state = %{filename: filename, ifmap: %{}}
+    state = %{filename: filename, ifmap: %{}, timing: timing_defaults()}
     write_dhclient_conf(state)
     Logger.debug("#{__MODULE__}: filename = #{inspect filename}: state = #{inspect state}")
     {:ok, state}
