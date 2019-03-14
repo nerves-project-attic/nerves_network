@@ -122,9 +122,10 @@ defmodule Nerves.Network.DHCPManager do
   ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
   defp consume(:down, :ifdown, state), do: consume(:down, {:ifdown, :no_info}, state)
   defp consume(:down, {:ifdown, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :down) :ifdown info: #{inspect info}" end
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :down) :ifdown info: #{inspect info} state = #{inspect state}" end
     state
       |> stop_dhclient
+      |> deconfigure
   end
 
   ## Context: :dhcp
@@ -137,7 +138,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   ## covers BOUND, REBOOT, RENEW, REBIND in Nerves.Network.Dhclientv4
-  defp consume(:dhcp, {event, info}, state) when event in [:bound, :reboot, :renew, :rebind] do
+  defp consume(:dhcp, {event, info}, state) when event in [:bound, :reboot, :renew, :rebind, :expire] do
     Logger.debug fn -> "#{__MODULE__}: consume (context = :dhcp) #{inspect event} info: #{inspect info}" end
     state
       |> configure(info)
@@ -146,8 +147,9 @@ defmodule Nerves.Network.DHCPManager do
 
   ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
   defp consume(:dhcp, :ifdown, state), do: consume(:dhcp, {:ifdown, :no_info}, state)
+
   defp consume(:dhcp, {:ifdown, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :dhcp) :ifup info: #{inspect info}" end
+    Logger.debug fn -> "#{__MODULE__}: consume (context = :dhcp) :ifdown info: #{inspect info}" end
     state
       |> stop_dhclient
       |> goto_context(:down)
@@ -159,7 +161,7 @@ defmodule Nerves.Network.DHCPManager do
     Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :ifup info: #{inspect info}" end
     state
   end
-  
+
   defp consume(:up, :ifdown, state), do: consume(:up, {:ifdown, :no_info}, state)
   defp consume(:up, {:ifdown, info}, state) do
     Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :ifdown info: #{inspect info}" end
@@ -180,7 +182,7 @@ defmodule Nerves.Network.DHCPManager do
     :no_resolv_conf
       |> configure(state, info)
       |> goto_context(:up)
-  end  
+  end
 
   # ********************************************************************************************* #
   # ****************************** LEGACY FUNCTIONS START *************************************** #
