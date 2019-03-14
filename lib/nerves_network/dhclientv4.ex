@@ -216,18 +216,44 @@ defmodule Nerves.Network.Dhclientv4 do
   @type dhclientv4_wrapper_event :: [...]
 
   @typedoc "Event from the dhclientv4 server to be sent via SystemRegistry."
-  @type event :: :deconfig | :bound | :renew | :leasefail | :reboot | :nak | :ifdown
+  @type event :: :deconfig
+  | :bound
+  | :renew
+  | :leasefail
+  | :expire
+  | :reboot
+  | :nak
+  | :ifdown
+  | :ifup
+
+  @spec notify(list(), event(), map()) :: map()
+  defp notify([ifname, ip, broadcast, subnet, router, domain, dns | _other_options], event, state) do
+    dnslist = String.split(dns, " ")
+
+    map =
+      %{
+        ifname: ifname,
+        ipv4_address: ip,
+        ipv4_broadcast: broadcast,
+        ipv4_subnet_mask: subnet,
+        ipv4_gateway: router,
+        domain: domain,
+        nameservers: dnslist
+      }
+
+    Logger.debug("dhclientv4: Notifying about event #{inspect event}: #{inspect map}")
+
+    Utils.notify(Nerves.Dhclientv4, state.ifname, event, map)
+  end
 
   @spec handle_dhclient(dhclientv4_wrapper_event, state) :: {:noreply, state}
   defp handle_dhclient(["deconfig", ifname | _rest], state) do
     Logger.debug("dhclientv4: deconfigure #{ifname}")
 
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :deconfig, %{ifname: ifname})
     {:noreply, state}
   end
 
-  defp handle_dhclient([reason, _ifname, _ip, _broadcast, _subnet, _router, _domain, _dns], state)
-       when reason in ["MEDIUM", "ARPCHECK", "ARPSEND", "TIMEOUT"] do
+  defp handle_dhclient([reason | _options], state) when reason in ["MEDIUM", "ARPCHECK", "ARPSEND", "TIMEOUT"] do
     Logger.debug(
       "dhclientv4: Received reason '#{reason}'. Not performing any update to network interface."
     )
@@ -235,107 +261,60 @@ defmodule Nerves.Network.Dhclientv4 do
     {:noreply, state}
   end
 
-  defp handle_dhclient(["BOUND", ifname, ip, broadcast, subnet, router, domain, dns], state) do
-    dnslist = String.split(dns, " ")
+  defp handle_dhclient([reason = "BOUND" | options], state) do
+    Logger.debug("dhclientv4: Received reason '#{reason}'")
 
-    Logger.debug(
-      "dhclientv4: Received reason 'BOUND'. #{ifname}: IP=#{ip}, dns=#{inspect(dns)} router=#{
-        inspect(router)
-      }"
-    )
-
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :bound, %{
-      ifname: ifname,
-      ipv4_address: ip,
-      ipv4_broadcast: broadcast,
-      ipv4_subnet_mask: subnet,
-      ipv4_gateway: router,
-      domain: domain,
-      nameservers: dnslist
-    })
+    notify(options, :bound, state)
 
     {:noreply, state}
   end
 
-  defp handle_dhclient(["REBOOT", ifname, ip, broadcast, subnet, router, domain, dns], state) do
-    dnslist = String.split(dns, " ")
+  defp handle_dhclient([reason = "REBOOT" | options], state) do
+    Logger.debug("dhclientv4: Received reason '#{reason}'")
 
-    Logger.debug(
-      "dhclientv4: Received reason 'REBOOT'. #{ifname}: IP=#{ip}, dns=#{inspect(dns)} router=#{
-        inspect(router)
-      }"
-    )
-
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :reboot, %{
-      ifname: ifname,
-      ipv4_address: ip,
-      ipv4_broadcast: broadcast,
-      ipv4_subnet_mask: subnet,
-      ipv4_gateway: router,
-      domain: domain,
-      nameservers: dnslist
-    })
+    notify(options, :reboot, state)
 
     {:noreply, state}
   end
 
-  defp handle_dhclient(["RENEW", ifname, ip, broadcast, subnet, router, domain, dns], state) do
-    dnslist = String.split(dns, " ")
+  defp handle_dhclient([reason = "RENEW" | options], state) do
+    Logger.debug("dhclientv4: Received reason '#{reason}'")
 
-    Logger.debug(
-      "dhclientv4: Received reason 'RENEW'. #{ifname}: IP=#{ip}, dns=#{inspect(dns)} router=#{
-        inspect(router)
-      }"
-    )
-
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :renew, %{
-      ifname: ifname,
-      ipv4_address: ip,
-      ipv4_broadcast: broadcast,
-      ipv4_subnet_mask: subnet,
-      ipv4_gateway: router,
-      domain: domain,
-      nameservers: dnslist
-    })
+    notify(options, :renew, state)
 
     {:noreply, state}
   end
 
-  defp handle_dhclient(["REBIND", ifname, ip, broadcast, subnet, router, domain, dns], state) do
-    dnslist = String.split(dns, " ")
+  defp handle_dhclient([reason = "REBIND" | options], state) do
+    Logger.debug("dhclientv4: Received reason '#{reason}'")
 
-    Logger.debug(
-      "dhclientv4: Received reason 'REBIND'. #{ifname}: IP=#{ip}, dns=#{inspect(dns)} router=#{
-        inspect(router)
-      }"
-    )
-
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :rebind, %{
-      ifname: ifname,
-      ipv4_address: ip,
-      ipv4_broadcast: broadcast,
-      ipv4_subnet_mask: subnet,
-      ipv4_gateway: router,
-      domain: domain,
-      nameservers: dnslist
-    })
+    notify(options, :rebind, state)
 
     {:noreply, state}
   end
 
-  defp handle_dhclient(
-         ["PREINIT", ifname, _ip, _broadcast, _subnet, _router, _domain, _dns],
-         state
-       ) do
-    Logger.debug("dhclientv4:  Received reason 'PREINIT'. Bringing #{ifname} up.")
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :ifup, %{ifname: ifname})
+
+  defp handle_dhclient([reason = "PREINIT" | options], state) do
+    Logger.debug("dhclientv4:  Received reason '#{reason}'. Bringing interface up.")
+
+    notify(options, :ifup, state)
+
     {:noreply, state}
   end
 
-  defp handle_dhclient([reason, ifname, _ip, _broadcast, _subnet, _router, _domain, _dns], state)
-       when reason in ["EXPIRE", "FAIL", "RELEASE", "STOP"] do
-    Logger.debug("dhclientv4: Received reason '#{reason}'. Bringing #{ifname} down.")
-    Utils.notify(Nerves.Dhclientv4, state.ifname, :ifdown, %{ifname: ifname})
+  defp handle_dhclient([reason = "EXPIRE" | options], state) do
+    Logger.debug("dhclientv4: Received reason '#{reason}'. Reconfiguring interface.")
+
+    notify(options, :expire, state)
+
+    {:noreply, state}
+  end
+
+  defp handle_dhclient([reason | options], state) when reason in ["FAIL", "RELEASE", "STOP"] do
+    Logger.debug("dhclientv4: Received reason '#{reason}'. Bringing interface down.")
+
+    notify(options, :ifdown, state)
+
     {:noreply, state}
   end
 
