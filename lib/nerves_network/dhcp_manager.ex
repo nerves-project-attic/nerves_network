@@ -15,7 +15,7 @@ defmodule Nerves.Network.DHCPManager do
             dhcp_retry_timer: nil
 
   def start_link(ifname, settings, opts \\ []) do
-    Logger.debug fn -> "DHCPManager starting.... ifname: #{inspect ifname}; settings: #{inspect settings}" end
+    Logger.debug "DHCPManager starting.... ifname: #{inspect ifname}; settings: #{inspect settings}"
     GenServer.start_link(__MODULE__, {ifname, settings}, opts)
   end
 
@@ -25,8 +25,8 @@ defmodule Nerves.Network.DHCPManager do
     {:ok, _} = Registry.register(Nerves.Dhclientv4, ifname, [])
 
     state = %Nerves.Network.DHCPManager{settings: settings, ifname: ifname}
-    Logger.debug fn -> "DHCPManager initialising.... state: #{inspect state}" end
-    Logger.debug fn -> "#{__MODULE__}:   settings: #{inspect settings}" end
+    Logger.debug "DHCPManager initialising.... state: #{inspect state}"
+    Logger.debug "settings: #{inspect settings}"
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces
@@ -37,12 +37,12 @@ defmodule Nerves.Network.DHCPManager do
         state
       end
 
-    Logger.debug fn -> "DHCPManager initialising.... state: #{inspect state}" end
+    Logger.debug "DHCPManager initialising.... state: #{inspect state}"
     {:ok, state}
   end
 
   def handle_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
-    Logger.debug fn -> "DHCPManager.EventHandler(#{ifname}) ifadded" end
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifadded"
     :ifadded
   end
   # :ifmoved occurs on systems that assign stable names to removable
@@ -53,7 +53,7 @@ defmodule Nerves.Network.DHCPManager do
     :ifadded
   end
   def handle_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
-    Logger.debug fn -> "DHCPManager.EventHandler(#{ifname}) ifremoved" end
+    Logger.debug "DHCPManager.EventHandler(#{ifname}) ifremoved"
     :ifremoved
   end
 
@@ -79,24 +79,24 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   def handle_info({Nerves.NetworkInterface, _, ifstate} = event, %{ifname: ifname} = s) do
-    Logger.debug fn -> "#{__MODULE__} handle_info: ifstate = #{inspect ifstate}" end
+    Logger.debug "handle_info: ifstate = #{inspect ifstate}"
     event = handle_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
-    Logger.debug fn -> "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}" end
+    Logger.debug "DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect event}"
     {:noreply, s}
   end
 
   #  info: %{domain_search: "ipv4.doman.name", ifname: "eth1", ipv4_address: "666::16/64", nameservers: ["fec0:0:0:1::7"]}
   def handle_info({Nerves.Dhclientv4, event, info}, %{ifname: ifname} = s) do
-    Logger.debug fn -> "DHCPManager.EventHandler(#{s.ifname}) event: #{inspect event}; info: #{inspect info}" end
+    Logger.debug "DHCPManager.EventHandler(#{s.ifname}) event: #{inspect event}; info: #{inspect info}"
     scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, {event, info}, s)
     {:noreply, s}
   end
 
   def handle_info(event, s) do
-    Logger.debug fn -> "DHCPManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}" end
+    Logger.debug "DHCPManager.EventHandler(#{s.ifname}): ignoring event: #{inspect event}"
     {:noreply, s}
   end
 
@@ -110,7 +110,7 @@ defmodule Nerves.Network.DHCPManager do
   ## covers PREINIT in Nerves.Network.Dhclientv4
   defp consume(:down, :ifup, state), do: consume(:down, {:ifup, :no_info}, state)
   defp consume(:down, {:ifup, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :down) :ifup info: #{inspect info}" end
+    Logger.debug "consume (context = :down) :ifup info: #{inspect info}"
     state
       |> start_dhclient
       |> goto_context(:dhcp)
@@ -122,7 +122,7 @@ defmodule Nerves.Network.DHCPManager do
   ## covers STOP, RELEASE, FAIL and EXPIRE in Nerves.Network.Dhclientv4
   defp consume(:down, :ifdown, state), do: consume(:down, {:ifdown, :no_info}, state)
   defp consume(:down, {:ifdown, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :down) :ifdown info: #{inspect info} state = #{inspect state}" end
+    Logger.debug "consume (context = :down) :ifdown info: #{inspect info} state = #{inspect state}"
     state
       |> stop_dhclient
       |> deconfigure
@@ -133,13 +133,13 @@ defmodule Nerves.Network.DHCPManager do
   ## covers PREINIT in Nerves.Network.Dhclientv4
   defp consume(:dhcp, :ifup, state), do: consume(:dhcp, {:ifup, :no_info}, state)
   defp consume(:dhcp, {:ifup, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :dhcp) :ifup info: #{inspect info}" end
+    Logger.debug "consume (context = :dhcp) :ifup info: #{inspect info}"
     state
   end
 
   ## covers BOUND, REBOOT, RENEW, REBIND in Nerves.Network.Dhclientv4
   defp consume(:dhcp, {event, info}, state) when event in [:bound, :reboot, :renew, :rebind, :expire] do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :dhcp) #{inspect event} info: #{inspect info}" end
+    Logger.debug "consume (context = :dhcp) #{inspect event} info: #{inspect info}"
     state
       |> configure(info)
       |> goto_context(:up)
@@ -149,7 +149,7 @@ defmodule Nerves.Network.DHCPManager do
   defp consume(:dhcp, :ifdown, state), do: consume(:dhcp, {:ifdown, :no_info}, state)
 
   defp consume(:dhcp, {:ifdown, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :dhcp) :ifdown info: #{inspect info}" end
+    Logger.debug "consume (context = :dhcp) :ifdown info: #{inspect info}"
     state
       |> stop_dhclient
       |> goto_context(:down)
@@ -158,13 +158,13 @@ defmodule Nerves.Network.DHCPManager do
   ## Context: :up
   defp consume(:up, :ifup, state), do: consume(:up, {:ifup, :no_info}, state)
   defp consume(:up, {:ifup, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :ifup info: #{inspect info}" end
+    Logger.debug "consume (context = :up) :ifup info: #{inspect info}"
     state
   end
 
   defp consume(:up, :ifdown, state), do: consume(:up, {:ifdown, :no_info}, state)
   defp consume(:up, {:ifdown, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :ifdown info: #{inspect info}" end
+    Logger.debug "consume (context = :up) :ifdown info: #{inspect info}"
     state
       |> stop_dhclient
       |> deconfigure
@@ -172,13 +172,13 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   defp consume(:up, {:bound, info}, state) do
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :up) :bound info: #{inspect info}" end
+    Logger.debug "consume (context = :up) :bound info: #{inspect info}"
     :no_resolv_conf
       |> configure(state, info)
   end
 
   defp consume(:up, {event, info}, state) when event in [:renew, :rebind, :reboot, :release, :expire, :stop] do ## I am not sure if :expire and :stop should be here, but they were here before, so I just left them.
-    Logger.debug fn -> "#{__MODULE__}: consume (context = :up) #{inspect event} info: #{inspect info}" end
+    Logger.debug "#{__MODULE__}: consume (context = :up) #{inspect event} info: #{inspect info}"
     :no_resolv_conf
       |> configure(state, info)
       |> goto_context(:up)
@@ -298,7 +298,7 @@ defmodule Nerves.Network.DHCPManager do
     if old_ip == "" or new_ip == old_ip do
       :ok
     else
-      Logger.debug fn -> "Removing ipv4 address = #{inspect old_ip} from #{inspect state.ifname}" end
+      Logger.debug "Removing ipv4 address = #{inspect old_ip} from #{inspect state.ifname}"
       Nerves.NetworkInterface.setup(state.ifname, %{:"-ipv4_address" => old_ip})
     end
   end
@@ -310,7 +310,7 @@ defmodule Nerves.Network.DHCPManager do
   end
 
   defp configure(state, info) do
-    Logger.warn("DHCP state #{inspect state} #{inspect info}")
+    Logger.warn "DHCP state #{inspect state} #{inspect info}"
 
     :ok = setup_iface(state, info)
     :ok = Nerves.Network.Resolvconf.setup(Nerves.Network.Resolvconf, state.ifname, info)
