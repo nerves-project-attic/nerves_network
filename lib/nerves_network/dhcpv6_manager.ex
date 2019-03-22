@@ -314,8 +314,8 @@ defmodule Nerves.Network.DHCPv6Manager do
   end
 
   defp remove_old_ip(state, info) do
-    old_ip = info[:"old_ipv6_address"] || ""
-    new_ip = info[:"ipv6_address"] || ""
+    old_ip = info[:old_ipv6_address] || ""
+    new_ip = info[:ipv6_address] || ""
 
     if old_ip == "" or new_ip == old_ip do
       :ok

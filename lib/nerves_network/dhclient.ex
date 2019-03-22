@@ -92,15 +92,31 @@ defmodule Nerves.Network.Dhclient do
     end
   end
 
+  defp runtime_config_file_path(_ifname, runtime) do
+    #Config file contains entries for all managed interfaces
+    Keyword.get(runtime, :config_file)
+  end
+
+
+  defp runtime_config_file(ifname, runtime) do
+    if Keyword.has_key?(runtime, :config_file) do
+      ["-cf", runtime_config_file_path(ifname, runtime)]
+    else
+      []
+    end
+  end
+
   # Parsing config.exs entry of the following format: [dhclient: [lease_file: "/var/system/dhclient6.leases", pid_file: "/var/system/dhclient6.pid"]]
   defp dhclient_runtime(ifname, mode) do
     runtime = runtime()
     Logger.debug(fn -> "#{__MODULE__}: runtime options = #{inspect(runtime)}" end)
-    runtime_lease_file(ifname, runtime, mode) ++ runtime_pid_file(ifname, runtime, mode)
+    runtime_lease_file(ifname, runtime, mode)
+    ++ runtime_pid_file(ifname, runtime, mode)
+    ++ runtime_config_file(ifname, runtime)
   end
 
   defp runtime() do
-    [ipv6: runtime] = Application.get_env(:nerves_network, :dhclient, [])
+    [ipv6: runtime] = Application.get_env(:nerves_network, :dhclientv6, [])
     runtime
   end
 

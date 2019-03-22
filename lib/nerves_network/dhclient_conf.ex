@@ -1,4 +1,4 @@
-defmodule Nerves.Network.Dhclientv4Conf do
+defmodule Nerves.Network.DhclientConf do
   @moduledoc """
   A helper module for managing contents of the dhclient.conf(5) file i.e.:
 
@@ -13,6 +13,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   Any runtime change to the dhclient.conf(5) file requires dhclient to be restarted for the changes to become
   effective.
+
+  One may want to spawn two separate instances for either of IPv4 and IPv6 when the dual-stack configuration is desirable.
   """
 
   use GenServer
@@ -56,7 +58,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
     :"subnet-mask"
     | :"broadcast-address"
     | :"time-offset"
-    | :"routers"
+    | :routers
     | :"domain-name"
     | :"domain-search"
     | :"domain-name-servers"
@@ -65,8 +67,10 @@ defmodule Nerves.Network.Dhclientv4Conf do
     | :"vendor-encapsulated-options"
     | :"dhcp-renewal-time"
     | :"dhcp-rebinding-time"
-    | :"fqdn"
+    | :fqdn
     | :"dhcp6.fqdn"
+    | :"dhcp6.name-servers"
+    | :"dhcp6.domain-search"
 
   @type protocol_timing_setting ::
     :timeout
@@ -80,21 +84,19 @@ defmodule Nerves.Network.Dhclientv4Conf do
       optional(protocol_timing_setting()) => integer(),
     }
 
-  @dhclient_conf_path "/etc/dhclientv4.conf"
-
-  @server_name __MODULE__
+  @dhclient_conf_path_base "/etc/dhclient.conf."
 
   @doc """
   Default `dhclientv4.conf` path for this system.
   """
-  @spec default_dhclient_conf_path :: Path.t
-  def default_dhclient_conf_path do
-    @dhclient_conf_path
+  @spec default_dhclient_conf_path(:ipv4 | :ipv6) :: Path.t
+  def default_dhclient_conf_path(ip_version) when ip_version in [:ipv4, :ipv6] do
+    @dhclient_conf_path_base <> to_string(ip_version)
   end
 
   # Returns a map containing default timing settings for a DHCP client
   # for further details please see the 'Protocol Timing Section' of https://www.isc.org/wp-content/uploads/2017/08/dhcp41clientconf.html .
-  @spec
+  @spec timing_defaults() :: protocol_timing
   defp timing_defaults() do
     %{
       :timeout => 33,
@@ -109,24 +111,25 @@ defmodule Nerves.Network.Dhclientv4Conf do
   Start the resolv.conf manager.
   """
   @spec start_link(Path.t, GenServer.options) :: GenServer.on_start
-  def start_link(dhclient_conf_path \\ @dhclient_conf_path, opts \\ []) do
-    GenServer.start_link(__MODULE__, dhclient_conf_path, opts)
+  def start_link([dhclient_conf_path, [name: server_name]], opts \\ []) do
+    Logger.info "start_link: server_name = #{inspect server_name} dhclient_conf_path = #{inspect dhclient_conf_path} opts = #{inspect opts}"
+    GenServer.start_link(__MODULE__, dhclient_conf_path, [name: server_name])
   end
 
   @doc """
   Set the search domain for non fully qualified domain name lookups.
   """
-  @spec set_vendor_class_id(Types.ifname, String.t) :: :ok
-  def set_vendor_class_id(ifname, vendor_class_id) do
-    GenServer.call(@server_name, {:set, :vendor_class_identifier, ifname, vendor_class_id})
+  @spec set_vendor_class_id(pid(), Types.ifname, String.t) :: :ok
+  def set_vendor_class_id(server_name, ifname, vendor_class_id) do
+    GenServer.call(server_name, {:set, :vendor_class_identifier, ifname, vendor_class_id})
   end
 
-  @spec set_client_id(Types.ifname, String.t) :: :ok
-  def set_client_id(ifname, client_id) do
-    GenServer.call(@server_name, {:set, :client_identifier, ifname, client_id})
+  @spec set_client_id(pid(), Types.ifname, String.t) :: :ok
+  def set_client_id(server_name, ifname, client_id) do
+    GenServer.call(server_name, {:set, :client_identifier, ifname, client_id})
   end
 
-  @spec set_user_class(Types.ifname, String.t() | nil) :: :ok
+  @spec set_user_class(pid(), Types.ifname, String.t() | nil) :: :ok
   @doc """
   RFC 3004             The User Class Option for DHCP        November 2000
   The format of this option is as follows:
@@ -160,16 +163,16 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
    The Code for this option is 77.
   """
-  def set_user_class(ifname, user_class = nil) do
-    GenServer.call(@server_name, {:set, :user_class, ifname, user_class})
+  def set_user_class(server_name, ifname, user_class = nil) do
+    GenServer.call(server_name, {:set, :user_class, ifname, user_class})
   end
 
-  def set_user_class(ifname, user_class) do
+  def set_user_class(server_name, ifname, user_class) do
     user_class_obj = to_string([String.length(user_class) | String.to_charlist(user_class)])
-    GenServer.call(@server_name, {:set, :user_class, ifname, user_class_obj})
+    GenServer.call(server_name, {:set, :user_class, ifname, user_class_obj})
   end
 
-  @spec set_fqdn(Types.ifname, String.t) :: :ok
+  @spec set_fqdn(pid(), Types.ifname, String.t) :: :ok
   @doc """
   Function is meant for the DDNS support.
   Returns `:ok`.
@@ -180,14 +183,14 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   ## Examples
 
-        iex> set_fqdn("eth0", "fully.qualified.domain.name.org.")
+        iex> set_fqdn(Nerves.Network.DhclientConf.Ipv4, "eth0", "fully.qualified.domain.name.org.")
         :ok
   """
-  def set_fqdn(ifname, fqdn) do
-    GenServer.call(@server_name, {:set, :fqdn, ifname, fqdn})
+  def set_fqdn(server_name, ifname, fqdn) do
+    GenServer.call(server_name, {:set, :fqdn, ifname, fqdn})
   end
 
-  @spec set_fqdn_server_update(Types.ifname, server_update()) :: :ok
+  @spec set_fqdn_server_update(pid(), Types.ifname, server_update()) :: :ok
   @doc """
   Function is meant for the DDNS support.
   Returns `:ok`.
@@ -198,19 +201,19 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   ## Examples
 
-        iex> set_fqdn_server_update("eth0", :on)
+        iex> set_fqdn_server_update(Nerves.Network.DhclientConf.Ipv4, "eth0", :on)
         :ok
 
   """
-  def set_fqdn_server_update(ifname, server_update = :on) do
-    GenServer.call(@server_name, {:set, :fqdn_server_update, ifname, to_string(server_update)})
+  def set_fqdn_server_update(server_name, ifname, server_update = :on) do
+    GenServer.call(server_name, {:set, :fqdn_server_update, ifname, to_string(server_update)})
   end
 
-  def set_fqdn_server_update(ifname, server_update = :off) do
-    GenServer.call(@server_name, {:set, :fqdn_server_update, ifname, to_string(server_update)})
+  def set_fqdn_server_update(server_name, ifname, server_update = :off) do
+    GenServer.call(server_name, {:set, :fqdn_server_update, ifname, to_string(server_update)})
   end
 
-  @spec set_fqdn_encoding(Types.ifname, fqdn_encoding()) :: :ok
+  @spec set_fqdn_encoding(pid(), Types.ifname, fqdn_encoding()) :: :ok
   @doc """
   Function is meant for the DDNS support.
   Returns `:ok`.
@@ -221,49 +224,49 @@ defmodule Nerves.Network.Dhclientv4Conf do
 
   ## Examples
 
-        iex> set_fqdn_encoding("eth0", :on)
+        iex> set_fqdn_encoding(Nerves.Network.DhclientConf.Ipv4, "eth0", :on)
         :ok
 
   """
-  def set_fqdn_encoding(ifname, encoding = :on) do
-    GenServer.call(@server_name, {:set, :fqdn_encoding, ifname, to_string(encoding)})
+  def set_fqdn_encoding(server_name, ifname, encoding = :on) do
+    GenServer.call(server_name, {:set, :fqdn_encoding, ifname, to_string(encoding)})
   end
 
-  def set_fqdn_encoding(ifname, encoding = :off) do
-    GenServer.call(@server_name, {:set, :fqdn_encoding, ifname, to_string(encoding)})
+  def set_fqdn_encoding(server_name, ifname, encoding = :off) do
+    GenServer.call(server_name, {:set, :fqdn_encoding, ifname, to_string(encoding)})
   end
 
-  @spec set_request_list(Types.ifname, list(String.t)) :: :ok
-  def set_request_list(ifname, request_list) do
-    GenServer.call(@server_name, {:set, :request, ifname, request_list})
+  @spec set_request_list(pid(), Types.ifname, list(String.t)) :: :ok
+  def set_request_list(server_name, ifname, request_list) do
+    GenServer.call(server_name, {:set, :request, ifname, request_list})
   end
 
-  @spec add_also_request(Types.ifname, list(String.t)) :: :ok
-  def add_also_request(ifname, request_list) do
-    GenServer.call(@server_name, {:add_to, :also_request, ifname, request_list})
+  @spec add_also_request(pid(), Types.ifname, list(String.t)) :: :ok
+  def add_also_request(server_name, ifname, request_list) do
+    GenServer.call(server_name, {:add_to, :also_request, ifname, request_list})
   end
 
-  @spec set_also_request(Types.ifname, list(list(String.t)) | [] | nil) :: :ok
-  def set_also_request(ifname, request_list) do
-    GenServer.call(@server_name, {:set, :also_request, ifname, request_list})
+  @spec set_also_request(pid(), Types.ifname, list(list(String.t)) | [] | nil) :: :ok
+  def set_also_request(server_name, ifname, request_list) do
+    GenServer.call(server_name, {:set, :also_request, ifname, request_list})
   end
 
-  @spec set_require_list(Types.ifname, list(String.t)) :: :ok
-  def set_require_list(ifname, require_list) do
-    GenServer.call(@server_name, {:set, :require, ifname, require_list})
+  @spec set_require_list(pid(), Types.ifname, list(String.t)) :: :ok
+  def set_require_list(server_name, ifname, require_list) do
+    GenServer.call(server_name, {:set, :require, ifname, require_list})
   end
 
-  @spec set_timing(protocol_timing()) :: :ok
-  def set_timing(timing) do
-    GenServer.call(@server_name, {:set, :timing, timing})
+  @spec set_timing(pid(), protocol_timing()) :: :ok
+  def set_timing(server_name, timing) do
+    GenServer.call(server_name, {:set, :timing, timing})
   end
 
-  @spec clear(Types.ifname) :: :ok
-  def clear(ifname) do
-    GenServer.call(@server_name, {:clear, ifname})
+  @spec clear(pid(), Types.ifname) :: :ok
+  def clear(server_name, ifname) do
+    GenServer.call(server_name, {:clear, ifname})
   end
 
-  @spec set_protocol_timing(protocol_timing()) :: :ok
+  @spec set_protocol_timing(pid(), protocol_timing()) :: :ok
   @doc """
   Function is meant for setting the DHCP timing
   Returns `:ok`.
@@ -274,6 +277,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
   ## Examples
 
         iex> set_protocol_timing(
+        ...> Nerves.Network.DhclientConf.Ipv4,
         ...> %{
         ...>   :timeout => 33,
         ...>   :retry => 33,
@@ -283,8 +287,8 @@ defmodule Nerves.Network.Dhclientv4Conf do
         ...> })
         :ok
   """
-  def set_protocol_timing(timing) do
-    GenServer.call(@server_name, {:set, :timing, timing})
+  def set_protocol_timing(server_name, timing) do
+    GenServer.call(server_name, {:set, :timing, timing})
   end
 
   ## GenServer
@@ -347,7 +351,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
   end
 
   @spec dhclient_timing_config_template(protocol_timing()) :: String.t()
-  defp dhclient_timing_config_template(timing) do
+  defp dhclient_timing_config_template(_timing) do
     ~s"""
     <%= if @timeout do %>timeout <%= @timeout%>;\n<% end %>\
     <%= if @retry do %>retry <%= @retry%>;\n<% end %>\
@@ -473,15 +477,6 @@ defmodule Nerves.Network.Dhclientv4Conf do
     update_item(item_name, ifname, value, state)
   end
 
-  @spec update_state(atom(), protocol_timing() | nil, state) :: state
-  defp update_state(item_name = :timing, value = nil, state)  do
-    %{state | timing: %{}}
-  end
-
-  defp update_state(item_name = :timing, value, state)  do
-    %{state | timing: value}
-  end
-
   defp update_state(item_name = :client_identifier, ifname, value, state)  do
     hardware_type = Nerves.Network.Utils.is_mac_eui_48?(value) or Nerves.Network.Utils.is_mac_eui_64?(value)
 
@@ -494,6 +489,15 @@ defmodule Nerves.Network.Dhclientv4Conf do
     %{new_state | ifmap: Map.put(state.ifmap, ifname, new_ifentry)}
   end
 
+  @spec update_state(atom(), protocol_timing() | nil, state) :: state
+  defp update_state(_item_name = :timing, _value = nil, state)  do
+    %{state | timing: %{}}
+  end
+
+  defp update_state(_item_name = :timing, value, state)  do
+    %{state | timing: value}
+  end
+
   defp update_state(item_name, ifname, value, state)  do
     update_item(item_name, ifname, value, state)
   end
@@ -503,7 +507,7 @@ defmodule Nerves.Network.Dhclientv4Conf do
   defp add_to_also_request(_ifname, [], state), do: state
   defp add_to_also_request(ifname, value, state) when is_list(value) do
     ifmap = Map.get(state.ifmap, ifname, %{})
-    old_also_request = Map.get(ifmap, :"also_request", [])
+    old_also_request = Map.get(ifmap, :also_request, [])
     new_ifmap = Map.merge(ifmap, %{:also_request => [ value | old_also_request ]})
     %{state | ifmap: Map.put(state.ifmap, ifname, new_ifmap)}
   end
@@ -557,10 +561,11 @@ defmodule Nerves.Network.Dhclientv4Conf do
   end
 
   @doc false
-  def init(filename) do
-    state = %{filename: filename, ifmap: %{}, timing: timing_defaults()}
+  def init(config_file_name) do
+    state = %{filename: config_file_name, ifmap: %{}, timing: timing_defaults()}
     write_dhclient_conf(state)
-    Logger.debug("#{__MODULE__}: filename = #{inspect filename}: state = #{inspect state}")
+    Logger.debug("init: filename = #{inspect config_file_name}: state = #{inspect state}")
+    IO.puts "#{__MODULE__}: init: filename = #{inspect config_file_name}: state = #{inspect state}"
     {:ok, state}
   end
 
