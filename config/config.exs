@@ -8,7 +8,6 @@ config :nerves_network, :default,
     psk: System.get_env("NERVES_NETWORK_PSK"),
     key_mgmt: String.to_atom(key_mgmt)
   ],
-
   #:stateful - Address and other-information i.e. DNSes; The flow is being defined by the DHCPv6 server via A, O, M flags sent in Router Advertisements
   #:stateless - only non-address information
   eth0: [
@@ -21,7 +20,7 @@ config :nerves_network, :default,
 config :nerves_network, :dhclientv6,
   ipv6: [
     lease_file:  "/root/dhclient6.leases",
-    pid_file:    "/root/dhclient6.pid"
+    pid_file:    "/root/dhclient6.pid",
     config_file: "/root/dhclient6.conf"
   ]
 
@@ -36,5 +35,3 @@ config :nerves_network, :resolver,
   [
     resolvconf_file: "/tmp/resolv.conf"
   ]
-
-

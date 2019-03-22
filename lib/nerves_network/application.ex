@@ -1,6 +1,5 @@
 defmodule Nerves.Network.Application do
   @moduledoc false
-
   use Application
   require Logger
 
@@ -21,7 +20,7 @@ defmodule Nerves.Network.Application do
       Supervisor.child_spec({Nerves.Network.DhclientConf, [dhclientv4_config_file, [name: Nerves.Network.DhclientConf.Ipv4]]}, id: Nerves.Network.DhclientConf.Ipv4),
       Supervisor.child_spec({Nerves.Network.DhclientConf, [dhclientv6_config_file, [name: Nerves.Network.DhclientConf.Ipv6]]}, id: Nerves.Network.DhclientConf.Ipv6),
       supervisor(Nerves.Network.IFSupervisor, [[name: Nerves.Network.IFSupervisor]]),
-      worker(Nerves.Network.Config, []),
+      worker(Nerves.Network.Config, [])
     ]
 
     opts = [strategy: :rest_for_one, name: Nerves.Network.Supervisor]

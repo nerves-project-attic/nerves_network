@@ -11,15 +11,15 @@ defmodule Nerves.Network.Resolvconf do
   file, their changes will be lost on the next update.
   """
 
-  @type resolvconf :: GenServer.server
+  @type resolvconf :: GenServer.server()
 
   @typedoc "Settings for resolvconf"
   @type ifmap :: %{
-    domain: String.t,
-    search: String.t,
-    nameservers: [Types.ip_address],
-    static_nameservers: [Types.ip_address],
-    ipv6_nameservers: [Types.ip_address]
+    domain: String.t(),
+    search: String.t(),
+    nameservers: [Types.ip_address()],
+    static_nameservers: [Types.ip_address()],
+    ipv6_nameservers: [Types.ip_address()]
   }
 
   @resolvconf_path "/etc/resolv.conf"
@@ -27,7 +27,7 @@ defmodule Nerves.Network.Resolvconf do
   @doc """
   Default `resolv.conf` path for this system.
   """
-  @spec default_resolvconf_path :: Path.t
+  @spec default_resolvconf_path :: Path.t()
   def default_resolvconf_path do
     @resolvconf_path
   end
@@ -35,7 +35,7 @@ defmodule Nerves.Network.Resolvconf do
   @doc """
   Start the resolv.conf manager.
   """
-  @spec start_link(Path.t, GenServer.options) :: GenServer.on_start
+  @spec start_link(Path.t(), GenServer.options()) :: GenServer.on_start()
   def start_link(resolvconf_path \\ @resolvconf_path, opts \\ []) do
     GenServer.start_link(__MODULE__, resolvconf_path, opts)
   end
@@ -53,7 +53,8 @@ defmodule Nerves.Network.Resolvconf do
 
     %{domain: "example.com", search: "example.com ipv6.example.com", nameservers: ["8.8.8.8", "8.8.4.4"]}
   """
-  @spec setup(resolvconf, Types.ifname, Nerves.Network.setup_settings | Types.udhcp_info) :: :ok
+  @spec setup(resolvconf, Types.ifname(), Nerves.Network.setup_settings() | Types.udhcp_info()) ::
+          :ok
   def setup(resolv_conf, ifname, options) when is_list(options) do
     setup(resolv_conf, ifname, :maps.from_list(options))
   end
@@ -65,7 +66,7 @@ defmodule Nerves.Network.Resolvconf do
   @doc """
   Set the search domain for non fully qualified domain name lookups.
   """
-  @spec set_domain(resolvconf, Types.ifname, String.t) :: :ok
+  @spec set_domain(resolvconf, Types.ifname(), String.t()) :: :ok
   def set_domain(resolv_conf, ifname, domain) do
     GenServer.call(resolv_conf, {:set_domain, ifname, domain})
   end
@@ -98,7 +99,7 @@ defmodule Nerves.Network.Resolvconf do
   will be added to "/etc/resolv.conf" and replace any entries that
   were previously added for the specified interface.
   """
-  @spec set_nameservers(resolvconf, Types.ifname, [Types.ip_address]) :: :ok
+  @spec set_nameservers(resolvconf, Types.ifname(), [Types.ip_address()]) :: :ok
   def set_nameservers(resolv_conf, ifname, servers) when is_list(servers) do
     GenServer.call(resolv_conf, {:set_nameservers, ifname, servers})
   end
@@ -107,7 +108,7 @@ defmodule Nerves.Network.Resolvconf do
   Clear all entries in "/etc/resolv.conf" that are associated with
   the specified interface.
   """
-  @spec clear(resolvconf, Types.ifname) :: :ok
+  @spec clear(resolvconf, Types.ifname()) :: :ok
   def clear(resolv_conf, ifname) do
     GenServer.call(resolv_conf, {:clear, ifname})
   end
@@ -139,7 +140,7 @@ defmodule Nerves.Network.Resolvconf do
   ## GenServer
 
   @typedoc "State of the server."
-  @type state :: %{ifname: Types.ifname, ifmap: ifmap}
+  @type state :: %{ifname: Types.ifname(), ifmap: ifmap}
 
   def init(filename) do
     state = %{filename: filename, ifmap: %{}}
@@ -228,7 +229,7 @@ defmodule Nerves.Network.Resolvconf do
     search_string <> " #{domain}"
   end
 
-  @spec domain_text({Types.ifname, ifmap} | any) :: String.t
+  @spec domain_text({Types.ifname(), ifmap} | any) :: String.t
   defp domain_text({_ifname, ifmap = %{:static_domains => static_domains}}) when is_list(static_domains) and static_domains != nil do
     ipv4_domain_string    = ifmap[:domain] || ""
     ipv6_domain_string    = ifmap[:ipv6_domain] || ""
@@ -248,11 +249,11 @@ defmodule Nerves.Network.Resolvconf do
   defp domain_text({_ifname, %{:ipv6_domain => domain}}) when domain != "", do: "search #{domain}\n"
   defp domain_text(_), do: ""
 
-
-  @spec nameserver_text({Types.ifname, ifmap} | any) :: [String.t]
+  @spec nameserver_text({Types.ifname(), ifmap} | any) :: [String.t()]
   defp nameserver_text({_ifname, %{:nameservers => nslist}}) do
     for ns <- nslist, do: "nameserver #{ns}\n"
   end
+
   defp nameserver_text(_), do: ""
 
   @spec static_nameserver_text({Types.ifname, ifmap} | any) :: [String.t]
@@ -284,7 +285,7 @@ defmodule Nerves.Network.Resolvconf do
   # We allow as well to manually using the :static_nameservers entry in the state. Those will be added to the /etc/resolv.conf file
   # prior to IPv4 and IPv6 nameserver entries in order to take precedence. This is to support 'static' IPv4/IPv6 settings.
   # The feature can be used to provide a 'static' nameserver entry on the top of ones dynamically configured by either DHCPv4 and/or DHCPv6.
-  @spec write_resolvconf(%{filename: Path.t, ifmap: ifmap | map}) :: :ok
+  @spec write_resolvconf(%{filename: Path.t(), ifmap: ifmap | map}) :: :ok
   defp write_resolvconf(state) do
     Logger.debug fn -> "#{__MODULE__}: write_resolvconf state = #{inspect state}" end
 

@@ -1,4 +1,4 @@
-# Nerves.Network
+# README
 [![Build Status](https://travis-ci.org/nerves-project/nerves_network.svg?branch=master)](https://travis-ci.org/nerves-project/nerves_network)
 [![Hex version](https://img.shields.io/hexpm/v/nerves_network.svg "Hex version")](https://hex.pm/packages/nerves_network)
 
@@ -11,10 +11,18 @@ In your firmware's `mix.exs`, add `nerves_network` to your deps for your system 
 ```elixir
 def deps(target) do
   [ system(target),
-    {:nerves_network, "~> 0.3"}
+    {:nerves_network, "~> 0.5"}
   ]
 end
 ```
+
+# Example Applications
+[nerves_examples](https://github.com/nerves-project/nerves_examples/tree/master/hello_network)
+has a networking example that can get you started.
+
+[nerves_init_gadget](https://github.com/nerves-project/nerves_init_gadget) also
+can setup networking for wired ethernet connections and usb gadgets such
+as beaglebone boards and raspberry pi 0.
 
 # WiFi Networking
 
@@ -37,9 +45,13 @@ key_mgmt = System.get_env("NERVES_NETWORK_KEY_MGMT") || "WPA-PSK"
 
 config :nerves_network, :default,
   wlan0: [
-    ssid: System.get_env("NERVES_NETWORK_SSID"),
-    psk: System.get_env("NERVES_NETWORK_PSK"),
-    key_mgmt: String.to_atom(key_mgmt)
+    networks: [
+      [
+        ssid: System.get_env("NERVES_NETWORK_SSID"),
+        psk: System.get_env("NERVES_NETWORK_PSK"),
+        key_mgmt: String.to_atom(key_mgmt)
+      ]
+    ]
   ],
   eth0: [
     ipv4_address_method: :dhcp
@@ -47,6 +59,53 @@ config :nerves_network, :default,
 ```
 
 If you are using an older version (`< 0.3.0`) of `nerves_runtime` then you'll need to do some additional setup to load the correct kernel module for WiFi. See [this page](OLD_NERVES_RUNTIME.md) for more information.
+
+## WiFi Networking Priority
+
+If you have more than one possible network, and you would like to automatically
+connect the highest priority one you can:
+
+```elixir
+settings = [
+  networks: [
+    [ssid: "FirstPriority", psk: "superSecret", key_mgmt: :"WPA-PSK", priority: 100],
+    [ssid: "SettleForThisOne", psk: "StillSecret", key_mgmt: :"WPA-PSK", priority: 10],
+    [ssid: "ConnectIfThoseOtherOnesArentAvailable", key_mgmt: :NONE, priority: 0,
+      ipv4_address_method: :static,
+      ipv4_address: "10.0.0.2", ipv4_subnet_mask: "255.255.0.0",
+      domain: "mycompany.com", nameservers: ["8.8.8.8", "8.8.4.4"],
+    ]
+  ]
+]
+
+# Now you can either use `default` or runtime setup.
+
+## Default
+use Mix.Config
+config :nerves_network, default: [
+  wlan0: settings,
+  eth0: []
+]
+
+## Runtime
+Nerves.Network.setup("wlan0", settings)
+```
+
+## WiFi Network host mode
+WpaSupplicant supports WiFi host mode (`mode: 2`). This means it will create an 
+access point rather than connect to one. example settings for this:
+
+```elixir
+settings = [
+  networks: [
+    # Note the final `d` in `dhcpd`
+    # this will start `OneDHCPD` on the interface.
+    [ssid: "NervesAP", psk: "supersecret", key_mgmt: :"WPA-PSK", mode: 2,
+     ipv4_address_method: :dhcpd] 
+  ]
+]
+Nerves.Network.setup("wlan0", settings)
+```
 
 ## Scanning
 
@@ -78,12 +137,19 @@ Nerves.Network.setup "wlan0", ssid: "my_accesspoint_name", key_mgmt: :"WPA-PSK",
 ```
 
 If your WiFi network does not use a secret key, specify the `key_mgmt` to be
-`:NONE`. Currently, wireless configuration passes almost unaltered to
+`:NONE`. 
+
+If your WiFi network is using `WEP` connect by running:
+```elixir
+  Nerves.Network.setup("wlan0", ssid: "wepnet", key_mgmt: :NONE, wep_key0: :"WEPSECRET", wep_tx_keyidx: 0)
+```
+
+Currently, wireless configuration passes almost unaltered to
 [wpa_supplicant.ex](https://github.com/nerves-project/nerves_wpa_supplicant), so
 see that project for more configuration options.
 
 **Note**
-`Nerves.Network.setup` stores your interface's configuration information with [`SystemRegistry`](https://github.com/nerves-project/system_registry), which ties the configuration to the calling process. As such, if the process that called `setup` terminates, the network interface will lose its configuration information and be torn down. You can avoid this by calling `setup` in your application's `start` function, or by configuring `nerves_network` using bootloader as described below.
+`Nerves.Network.setup` stores your interface's configuration information with [`SystemRegistry`](https://github.com/nerves-project/system_registry), which ties the configuration to the calling process. As such, if the process that called `setup` terminates, the network interface will lose its configuration information and be torn down. You can avoid this by calling `setup` in your application's `start` function, or by configuring `nerves_network` using shoehorn as described below.
 
 # Wired Networking
 
@@ -103,12 +169,12 @@ Nerves.Network.setup "eth0", ipv4_address_method: :static,
 Nerves.Network.setup "usb0", ipv4_address_method: :linklocal
 ```
 
-# Using `nerves_network` with `bootloader`
+# Using `nerves_network` with `shoehorn`
 
-Set default network interface settings as described above. Then you can use [`bootloader`](https://github.com/nerves-project/bootloader) to start `nerves_network`:
+Set default network interface settings as described above. Then you can use [`shoehorn`](https://github.com/nerves-project/shoehorn) to start `nerves_network`:
 
 ```elixir
-config :bootloader,
+config :shoehorn,
   init: [:nerves_network],
   app: :your_app
 ```

@@ -7,3 +7,4 @@ priv/dhclient_wrapper
 priv/dhclientv4_wrapper
 src/*.o
 /doc
+.elixir_ls

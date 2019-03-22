@@ -1,4 +1,4 @@
-defmodule Nerves.Network.DHCPManager do
+defmodule Nerves.Network.UDHCPManager do
   use GenServer
   require Logger
   import Nerves.Network.Utils
@@ -42,7 +42,7 @@ defmodule Nerves.Network.DHCPManager do
     {:ok, _} = Registry.register(Nerves.NetworkInterface, ifname, [])
     {:ok, _} = Registry.register(Nerves.Udhcpc, ifname, [])
 
-    state = %Nerves.Network.DHCPManager{settings: settings, ifname: ifname}
+    state = %Nerves.Network.UDHCPManager{settings: settings, ifname: ifname}
     # If the interface currently exists send ourselves a message that it
     # was added to get things going.
     current_interfaces = Nerves.NetworkInterface.interfaces()
@@ -61,7 +61,7 @@ defmodule Nerves.Network.DHCPManager do
           {Nerves.NetworkInterface | Nerves.Udhcpc, atom, %{ifname: Types.ifname()}}
         ) :: Types.ifevent()
   defp handle_registry_event({Nerves.NetworkInterface, :ifadded, %{ifname: ifname}}) do
-    Logger.debug("DHCPManager(#{ifname}) network_interface ifadded")
+    Logger.debug("UDHCPManager(#{ifname}) network_interface ifadded")
     :ifadded
   end
 
@@ -69,12 +69,12 @@ defmodule Nerves.Network.DHCPManager do
   # interfaces. I.e. the interface is added under the dynamically chosen
   # name and then quickly renamed to something that is stable across boots.
   defp handle_registry_event({Nerves.NetworkInterface, :ifmoved, %{ifname: ifname}}) do
-    Logger.debug("DHCPManager(#{ifname}) network_interface ifadded (moved)")
+    Logger.debug("UDHCPManager(#{ifname}) network_interface ifadded (moved)")
     :ifadded
   end
 
   defp handle_registry_event({Nerves.NetworkInterface, :ifremoved, %{ifname: ifname}}) do
-    Logger.debug("DHCPManager(#{ifname}) network_interface ifremoved")
+    Logger.debug("UDHCPManager(#{ifname}) network_interface ifremoved")
     :ifremoved
   end
 
@@ -84,54 +84,54 @@ defmodule Nerves.Network.DHCPManager do
   defp handle_registry_event(
          {Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: true}}
        ) do
-    Logger.debug("DHCPManager(#{ifname}) network_interface ifup")
+    Logger.debug("UDHCPManager(#{ifname}) network_interface ifup")
     :ifup
   end
 
   defp handle_registry_event(
          {Nerves.NetworkInterface, :ifchanged, %{ifname: ifname, is_lower_up: false}}
        ) do
-    Logger.debug("DHCPManager(#{ifname}) network_interface ifdown")
+    Logger.debug("UDHCPManager(#{ifname}) network_interface ifdown")
     :ifdown
   end
 
   defp handle_registry_event({Nerves.NetworkInterface, event, %{ifname: ifname}}) do
-    Logger.debug("DHCPManager(#{ifname}): ignoring event: #{inspect(event)}")
+    Logger.debug("UDHCPManager(#{ifname}): ignoring event: #{inspect(event)}")
     :noop
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :bound, %{ifname: ifname} = info}) do
-    Logger.info("DHCPManager(#{ifname}): udhcp bound")
+    Logger.info("UDHCPManager(#{ifname}): udhcp bound")
     {:bound, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :deconfig, %{ifname: ifname} = info}) do
-    Logger.info("DHCPManager(#{ifname}): udhcp deconfig")
+    Logger.info("UDHCPManager(#{ifname}): udhcp deconfig")
     {:deconfig, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :nak, %{ifname: ifname} = info}) do
-    Logger.info("DHCPManager(#{ifname}): udhcp nak")
+    Logger.info("UDHCPManager(#{ifname}): udhcp nak")
     {:nak, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :renew, %{ifname: ifname} = info}) do
-    Logger.info("DHCPManager(#{ifname}): udhcp renew")
+    Logger.info("UDHCPManager(#{ifname}): udhcp renew")
     {:renew, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, :leasefail, %{ifname: ifname} = info}) do
-    Logger.info("DHCPManager(#{ifname}): udhcp leasefail")
+    Logger.info("UDHCPManager(#{ifname}): udhcp leasefail")
     {:leasefail, info}
   end
 
   defp handle_registry_event({Nerves.Udhcpc, event, %{ifname: ifname}}) do
-    Logger.info("DHCPManager(#{ifname}): ignoring event: #{inspect(event)}")
+    Logger.info("UDHCPManager(#{ifname}): ignoring event: #{inspect(event)}")
     :noop
   end
 
   def handle_call(:teardown, _from, state) do
-    Logger.debug("DHCPManager(#{state.ifname}, #{state.context}) got event :teardown")
+    Logger.debug("UDHCPManager(#{state.ifname}, #{state.context}) got event :teardown")
     s = consume(state.context, :teardown, state)
     {:reply, :ok, s}
   end
@@ -141,7 +141,7 @@ defmodule Nerves.Network.DHCPManager do
     event = handle_registry_event(event)
     scope(ifname) |> SystemRegistry.update(ifstate)
     s = consume(s.context, event, s)
-    Logger.debug("DHCPManager(#{s.ifname}, #{s.context}) got event #{inspect(event)}")
+    Logger.debug("UDHCPManager(#{s.ifname}, #{s.context}) got event #{inspect(event)}")
     {:noreply, s}
   end
 
@@ -150,7 +150,7 @@ defmodule Nerves.Network.DHCPManager do
     {_, info} = event = handle_registry_event(event)
     scope(ifname) |> SystemRegistry.update(info)
     s = consume(s.context, event, s)
-    Logger.debug("DHCPManager(#{s.ifname}) udhcpc #{inspect(event)}")
+    Logger.debug("UDHCPManager(#{s.ifname}) udhcpc #{inspect(event)}")
     {:noreply, s}
   end
 
@@ -162,14 +162,14 @@ defmodule Nerves.Network.DHCPManager do
 
   # Catch all.
   def handle_info(event, s) do
-    Logger.debug("DHCPManager(#{s.ifname}): ignoring event: #{inspect(event)}")
+    Logger.debug("UDHCPManager(#{s.ifname}): ignoring event: #{inspect(event)}")
     {:noreply, s}
   end
 
   ## State machine implementation
   @spec goto_context(t, context) :: t
   defp goto_context(state, newcontext) do
-    %Nerves.Network.DHCPManager{state | context: newcontext}
+    %Nerves.Network.UDHCPManager{state | context: newcontext}
   end
 
   @typedoc "Event for the state machine."
@@ -293,7 +293,7 @@ defmodule Nerves.Network.DHCPManager do
   defp stop_udhcpc(state) do
     if is_pid(state.dhcp_pid) do
       Nerves.Network.Udhcpc.stop(state.dhcp_pid)
-      %Nerves.Network.DHCPManager{state | dhcp_pid: nil}
+      %Nerves.Network.UDHCPManager{state | dhcp_pid: nil}
     else
       state
     end
@@ -303,7 +303,7 @@ defmodule Nerves.Network.DHCPManager do
   defp start_udhcpc(state) do
     state = stop_udhcpc(state)
     {:ok, pid} = Nerves.Network.Udhcpc.start_link(state.ifname)
-    %Nerves.Network.DHCPManager{state | dhcp_pid: pid}
+    %Nerves.Network.UDHCPManager{state | dhcp_pid: pid}
   end
 
   @spec deconfigure(t) :: t
