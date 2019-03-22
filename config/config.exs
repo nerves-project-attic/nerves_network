@@ -18,10 +18,11 @@ config :nerves_network, :default,
 
 #The prefixes for the lease and pid file. The file anmes will be appended with the inetrface's name
 #i.e. dhclient6.leases.eth0
-config :nerves_network, :dhclient,
+config :nerves_network, :dhclientv6,
   ipv6: [
-    lease_file: "/root/dhclient6.leases",
-    pid_file:   "/root/dhclient6.pid"
+    lease_file:  "/root/dhclient6.leases",
+    pid_file:    "/root/dhclient6.pid"
+    config_file: "/root/dhclient6.conf"
   ]
 
 config :nerves_network, :dhclientv4,
