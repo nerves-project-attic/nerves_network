@@ -316,7 +316,7 @@ defmodule Nerves.Network.Resolvconf do
   defp entry_to_map("domain", value, _map), do: %{search: value}
   defp entry_to_map("search", value, _map), do: %{search: value}
   defp entry_to_map("nameserver", value, map) do
-    nameservers = map[:"nameservers"]
+    nameservers = map[:nameservers]
     case nameservers do
       nil -> %{nameservers: [value]}
       # We are doing it slow way to preserve the order of occurrence of nameserver entries - up to 3 such entries are supported
