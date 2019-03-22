@@ -112,7 +112,7 @@ defmodule Nerves.Network.DhclientConf do
   """
   @spec start_link(Path.t, GenServer.options) :: GenServer.on_start
   def start_link([dhclient_conf_path, [name: server_name]], opts \\ []) do
-    IO.puts "#{__MODULE__}: start_link: server_name = #{inspect server_name} dhclient_conf_path = #{inspect dhclient_conf_path} opts = #{inspect opts}"
+    Logger.info "start_link: server_name = #{inspect server_name} dhclient_conf_path = #{inspect dhclient_conf_path} opts = #{inspect opts}"
     GenServer.start_link(__MODULE__, dhclient_conf_path, [name: server_name])
   end
 
