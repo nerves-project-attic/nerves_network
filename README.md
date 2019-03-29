@@ -49,7 +49,8 @@ config :nerves_network, :default,
       [
         ssid: System.get_env("NERVES_NETWORK_SSID"),
         psk: System.get_env("NERVES_NETWORK_PSK"),
-        key_mgmt: String.to_atom(key_mgmt)
+        key_mgmt: String.to_atom(key_mgmt),
+        scan_ssid: 1 #if your WiFi setup as hidden
       ]
     ]
   ],
@@ -59,6 +60,8 @@ config :nerves_network, :default,
 ```
 
 If you are using an older version (`< 0.3.0`) of `nerves_runtime` then you'll need to do some additional setup to load the correct kernel module for WiFi. See [this page](OLD_NERVES_RUNTIME.md) for more information.
+
+tips: if your wifi setup as hidden, your must set `scan_ssid: 1` [https://w1.fi/cgit/hostap/plain/wpa_supplicant/wpa_supplicant.conf](https://w1.fi/cgit/hostap/plain/wpa_supplicant/wpa_supplicant.conf)
 
 ## WiFi Networking Priority
 
