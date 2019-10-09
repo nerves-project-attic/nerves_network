@@ -377,6 +377,16 @@ defmodule Nerves.Network.WiFiManager do
     |> goto_context(:associate_wifi)
   end
 
+  defp consume(:up, {:deconfig, %{ifname: "wlan0"}}, state) do
+    if is_pid(state.wpa_pid) do
+      Nerves.WpaSupplicant.reassociate(state.wpa_pid)
+    end
+
+    state
+    |> stop_dhcp
+    |> goto_context(:associate_wifi)
+  end
+
   defp consume(:up, {:wifi_connected, id}, state) do
     state
     |> Map.put(:current_id, id)
@@ -584,7 +594,7 @@ defmodule Nerves.Network.WiFiManager do
     ]
 
     # This is a "best effort" call.
-    # This will be called in situations where the IF is removed or 
+    # This will be called in situations where the IF is removed or
     # down, which results in things like ENODEV
     _ = Nerves.NetworkInterface.setup(state.ifname, clear)
     :ok = Nerves.Network.Resolvconf.clear(Nerves.Network.Resolvconf, state.ifname)
