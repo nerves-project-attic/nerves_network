@@ -2,6 +2,18 @@
 [![Build Status](https://travis-ci.org/nerves-project/nerves_network.svg?branch=master)](https://travis-ci.org/nerves-project/nerves_network)
 [![Hex version](https://img.shields.io/hexpm/v/nerves_network.svg "Hex version")](https://hex.pm/packages/nerves_network)
 
+> IMPORTANT: This package is no longer maintained and should not be used in new
+> projects.
+>
+> See [`VintageNet`](https://github.com/nerves-networking/vintage_net)
+> for the new networking library and
+> [`NervesPack`](https://github.com/nerves-project/nerves_pack) for getting
+> started quickly. The Nerves new project generator (`mix nerves.new
+> my_project`) creates projects using `NervesPack` and `VintageNet`.
+>
+> Existing projects using this library are encouraged to upgrade to
+> `VintageNet`.
+
 Connect to wired and wireless networks on Nerves platforms.
 
 # General Installation (WiFi and Wired)
